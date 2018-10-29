@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from pkg_resources import get_distribution, DistributionNotFound
 
 try:
@@ -9,3 +8,12 @@ except DistributionNotFound:
     __version__ = 'unknown'
 finally:
     del get_distribution, DistributionNotFound
+
+
+class BaseModel:
+    """
+    Base class for all models
+    """
+    name = None
+    state_variables = []
+    parameters = []
