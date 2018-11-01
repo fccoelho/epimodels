@@ -7,16 +7,24 @@ License: GPL-v3
 
 __author__ = 'fccoelho'
 
+import numpy as np
 from scipy.stats.distributions import poisson, nbinom
 from numpy import inf, nan, nan_to_num
 import sys
+import logging
 import cython
+from epimodels import BaseModel
 
 
-vnames = {
-    'SIR': ['Exposed', 'Infectious', 'Susceptible'],
+
+model_types = {
+    'SIR': {'variables':{'R': 'Removed', 'I':'Infectious', 'S':'Susceptible'},
+            'parameters': {'b': r'\beta', 'g': r'\gamma'}
+            },
     'SIR_s': ['Exposed', 'Infectious', 'Susceptible'],
-    'SIS': ['Exposed', 'Infectious', 'Susceptible'],
+    'SIS': {'variables':{'I': 'Infectious', "S": 'Susceptible'},
+            'parameters': {'b': r'\beta', 'g': r'\gamma'}
+            },
     'SIS_s': ['Exposed', 'Infectious', 'Susceptible'],
     'SEIS': ['Exposed', 'Infectious', 'Susceptible'],
     'SEIS_s': ['Exposed', 'Infectious', 'Susceptible'],
@@ -40,25 +48,32 @@ vnames = {
 }
 
 
-class Epimodel(object):
+class Epimodel(BaseModel):
     """
     Defines a library of discrete time population models
     """
     @cython.locals(model_type='bytes', parallel='bint')
-    def __init__(self, model_type=b'', parallel=True):
+    def __init__(self, model_type=b'', parms: dict={}):
         """
         defines which models a given site will use
         and set variable names accordingly.
         :param parallel: Boolean for parallel execution
         :param model_type: string identifying the model type
         """
-        self.step = selectModel(model_type)
-        self.parallel = parallel
+        try:
+            assert model_type in model_types
+            self.model_type = model_type
+        except AssertionError:
+            logging.Error('Invalid model type: {}'.format(model_type))
+        self.run = selectModel(model_type)
+        self.state_variables = model_types[model_type]['variables']
+        self.parameters = model_types[model_type]['parameters']
+        self.parameters.update(parms)
 
     def __call__(self, *args, **kwargs):
         # args = self.get_args_from_redis()
-        res = self.step(*args)
-        # self.update_redis(res)
+        res = self.run(*args)
+        self.traces.update(res)
         # return res
 
     # @cython.locals( simstep='long', totpop='long', theta='double', npass='double')
@@ -255,77 +270,64 @@ def stepFlu(inits, simstep, totpop, theta=0, npass=0, bi=None, bp=None, values=N
             Ic2pos, Ig2pos, S3pos, E3pos, Is3pos, Ic3pos, Ig3pos, S4pos,
             E4pos, Is4pos, Ic4pos, Ig4pos], Lpos, migInf
 
-@cython.locals(inits= 'object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSIS(inits, simstep, totpop, theta=0, npass=0, bi=None, bp=None, values=None):
+
+def stepSIS(inits: list, timesteps: int, totpop: int, params: dict) -> tuple:
     """
     calculates the model SIS, and return its values (no demographics)
     - inits = (E,I,S)
     - theta = infectious individuals from neighbor sites
+    :param timesteps:
+    :param params:
     :param inits: tuple with initial conditions
     :param simstep: step of the simulation
     :param totpop: total population
-    :param theta: inflow of infectives parameter
-    :param npass: total inflow
-    :param bi: dictionary with state
-    :param bp: dictionary with parameter values
-    :param values: tuple of extra values
     :return:
     """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
+    S: np.ndarray = np.zeros(timesteps)
+    I: np.ndarray = np.zeros(timesteps)
+    tspan = np.arange(timesteps)
+    E, I[0], S[0] = inits
     N = totpop
 
-    beta = bp['beta'];
-    alpha = bp['alpha'];
-    r = bp['r'];
-    b = bp['b']
+    beta = params['beta']
+    gamma = params['gamma']
 
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
-    # Model
-    Ipos = (1 - r) * I + Lpos
-    Spos = S + b - Lpos + r * I
+    for i in tspan[:-1]:
+        Lpos = float(beta) * S[i] * I[i] / N
+        # Model
+        I[i+1] = I[i] + Lpos - gamma*I[i]
+        S[i+1] = S[i] - Lpos + gamma*I[i]
 
-    # Migrating infecctious
-    migInf = (Ipos)
-    return [0, Ipos, Spos], Lpos, migInf
+
+    return {'S': S, 'I': I, 'time': tspan}
 
 
 @cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
                beta='double', alpha='double', E='double', I='double', S='double', N='long',
                r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
                Ipos='double', Spos='double', Rpos='double')
-def stepSIS_s(inits, simstep, totpop, theta=0, npass=0, bi=None, bp=None, values=None, dist='poisson'):
+def stepSIS_s(inits, timesteps, totpop):
     """
     Defines an stochastic model SIS:
     - inits = (E,I,S)
     - theta = infectious individuals from neighbor sites
     """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
+    S: np.ndarray = np.zeros(timesteps)
+    I: np.ndarray = np.zeros(timesteps)
+    R: np.ndarray = np.zeros(timesteps)
+    tspan = np.arange(timesteps)
+
+    S[0], I[0], R[0] = inits
 
     N = totpop
-    beta = bp['beta'];
-    alpha = bp['alpha'];
+    beta = parms['beta'];
+    gamma = parms['gamma'];
     # e = bp['e'];
     r = bp['r'];
     # delta = bp['delta'];
     b = bp['b'];
     # w = bp['w'];
     # p = bp['p']
-    Lpos_esp = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
-
-    if dist == 'poisson':
-        Lpos = poisson(Lpos_esp)
-    elif dist == 'negbin':
-        prob = I / (I + Lpos_esp)  # convertin between parameterizations
-        Lpos = nbinom(I, prob)
 
     # Model
     Ipos = (1 - r) * I + Lpos
@@ -337,40 +339,33 @@ def stepSIS_s(inits, simstep, totpop, theta=0, npass=0, bi=None, bp=None, values
     return [0, Ipos, Spos], Lpos, migInf
 
 
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSIR(inits, simstep, totpop, theta=0, npass=0, bi=None, bp=None, values=None):
+def stepSIR(inits, timesteps, totpop, params):
     """
     calculates the model SIR, and return its values (no demographics)
     - inits = (E,I,S)
     - theta = infectious individuals from neighbor sites
     """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
+    S: np.ndarray = np.zeros(timesteps)
+    I: np.ndarray = np.zeros(timesteps)
+    R: np.ndarray = np.zeros(timesteps)
+    tspan = np.arange(timesteps)
+
+    S[0], I[0], R[0] = inits
     N = totpop
-    beta = bp['beta'];
-    alpha = bp['alpha'];
-    # e = bp['e'];
-    r = bp['r'];
-    # delta = bp['delta'];
-    b = bp['b'];
-    # w = bp['w'];
-    # p = bp['p']
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
+    beta = params['beta']
+    gamma = params['gamma']
+
+
+
 
     # Model
-    Ipos = (1 - r) * I + Lpos
-    Spos = S + b - Lpos
-    Rpos = N - (Spos + Ipos)
+    for i in tspan[:-1]:
+        Lpos = float(beta) * S[i] * I[i] / N  # Number of new cases
+        I[i+1] = I[i] + Lpos - gamma * I[i]
+        S[i+1] = S[i] - Lpos
+        R[i+1] = N - (S[i+1] + I[i+1])
 
-    # Migrating infecctious
-    migInf = Ipos
-
-    return [0, Ipos, Spos], Lpos, migInf
+    return {'time': tspan, 'S': S, 'I': I, 'R':R}
 
 
 @cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',

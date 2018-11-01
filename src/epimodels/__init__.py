@@ -1,4 +1,5 @@
 from pkg_resources import get_distribution, DistributionNotFound
+import logging
 
 try:
     # Change here if project is renamed and does not equal the package name
@@ -9,11 +10,21 @@ except DistributionNotFound:
 finally:
     del get_distribution, DistributionNotFound
 
+from matplotlib import pyplot as P
 
 class BaseModel:
     """
     Base class for all models
     """
     name = None
-    state_variables = []
-    parameters = []
+    model_type = None
+    state_variables = {}
+    parameters = {}
+    traces = {}
+    def plot_traces(self):
+        for series, data in self.traces.items():
+            if series == 'time':
+                continue
+            P.plot(self.traces['time'], data, label=series)
+        P.legend(loc=0)
+        P.title("{} model".format(self.model_type))

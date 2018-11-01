@@ -10,6 +10,7 @@ scipy = "*"
 sympy = "*"
 pytest = "*"
 pytest-cov = "*"
+matplotlib = "*"
 
 [dev-packages]
 
