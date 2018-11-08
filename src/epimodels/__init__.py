@@ -16,11 +16,13 @@ class BaseModel:
     """
     Base class for all models
     """
-    name = None
-    model_type = None
-    state_variables = {}
-    parameters = {}
-    traces = {}
+    def __init__(self):
+        self.name = None
+        self.model_type = None
+        self.state_variables = {}
+        self.parameters = {}
+        self.traces = {}
+
     def plot_traces(self):
         for series, data in self.traces.items():
             if series == 'time':

@@ -11,6 +11,7 @@ sympy = "*"
 pytest = "*"
 pytest-cov = "*"
 matplotlib = "*"
+mypy = "*"
 
 [dev-packages]
 

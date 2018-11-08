@@ -1,28 +1,54 @@
 __author__ = 'fccoelho'
 
 import pytest
-from epimodels.discrete.models import  Epimodel
+from epimodels.discrete.models import Epimodel
 import pyximport; pyximport.install(pyimport=True)
 from matplotlib import pyplot as P
 
 
 def test_SIS():
-    model  = Epimodel('SIS')
-    model([0, 1, 1000], 50, 1001, {'beta': 2, 'gamma': 1})
-    assert len(model.traces) == 3
-    assert len(model.traces['time']) == 50
-    model.plot_traces()
+    modelsis  = Epimodel('SIS')
+    modelsis([0, 1, 1000], 50, 1001, {'beta': 2, 'gamma': 1})
+    assert len(modelsis.traces) == 3
+    assert len(modelsis.traces['time']) == 50
+    modelsis.plot_traces()
     P.show()
-    assert isinstance(model, Epimodel)
+    assert isinstance(modelsis, Epimodel)
+
 
 def test_SIR():
-    model  = Epimodel('SIR')
-    model([1000, 1, 0], 50, 1001, {'beta': 2, 'gamma': 1})
-    assert len(model.traces) == 4
-    assert len(model.traces['time']) == 50
-    model.plot_traces()
+    modelsir  = Epimodel('SIR')
+    modelsir([1000, 1, 0], 50, 1001, {'beta': 2, 'gamma': 1})
+    assert len(modelsir.traces) == 4
+    assert len(modelsir.traces['time']) == 50
+    modelsir.plot_traces()
     P.show()
-    assert isinstance(model, Epimodel)
+    assert isinstance(modelsir, Epimodel)
+
+def test_FLU():
+    modelflu = Epimodel('Influenza')
+    modelflu([250,1,0,0,0,250,1,0,0,0,250,1,0,0,0,250,1,0,0,0], 50, 1004, {'beta': 2.0,
+                                                                        'r': 0.25,
+                                                                        'e': 0.5,
+                                                                        'c': 0.5,
+                                                                        'g': 1/3,
+                                                                        'd': 1/7,
+                                                                        'pc1': .67,
+                                                                        'pc2': .67,
+                                                                        'pc3': .67,
+                                                                        'pc4': .67,
+                                                                        'pp1': .32,
+                                                                        'pp2': .112,
+                                                                        'pp3': .13,
+                                                                        'pp4': .38,
+                                                                        'b': 0
+                                                                        })
+    assert len(modelflu.traces) == 21
+    assert len(modelflu.traces['time']) == 50
+    print(list(modelflu.traces.keys()))
+    modelflu.plot_traces()
+    P.show()
+    assert isinstance(modelflu, Epimodel)
 
 
 
