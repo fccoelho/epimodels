@@ -19,27 +19,22 @@ from epimodels import BaseModel
 
 model_types = {
     'SIR': {'variables':{'R': 'Removed', 'I':'Infectious', 'S':'Susceptible'},
-            'parameters': {'b': r'\beta', 'g': r'\gamma'}
+            'parameters': {'beta': r'\beta', 'gamma': r'\gamma'}
             },
-    'SIR_s': ['Exposed', 'Infectious', 'Susceptible'],
     'SIS': {'variables':{'I': 'Infectious', "S": 'Susceptible'},
-            'parameters': {'b': r'\beta', 'g': r'\gamma'}
+            'parameters': {'beta': r'\beta', 'gamma': r'\gamma'}
             },
-    'SIS_s': ['Exposed', 'Infectious', 'Susceptible'],
-    'SEIS': ['Exposed', 'Infectious', 'Susceptible'],
-    'SEIS_s': ['Exposed', 'Infectious', 'Susceptible'],
-    'SEIR': ['Exposed', 'Infectious', 'Susceptible'],
-    'SEIR_s': ['Exposed', 'Infectious', 'Susceptible'],
+    'SEIS': {'variables':{'I': 'Infectious', "S": 'Susceptible', 'E': 'Exposed'},
+            'parameters': {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r'}
+            },
+    'SEIR': {'variables':{'I': 'Infectious', "S": 'Susceptible', 'E': 'Exposed', 'R': 'Removed'},
+            'parameters': {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r', 'alpha': r'\alpha'}
+            },
     'SIpRpS': ['Exposed', 'Infectious', 'Susceptible'],
-    'SIpRpS_s': ['Exposed', 'Infectious', 'Susceptible'],
     'SEIpRpS': ['Exposed', 'Infectious', 'Susceptible'],
-    'SEIpRpS_s': ['Exposed', 'Infectious', 'Susceptible'],
     'SEIpR': ['Exposed', 'Infectious', 'Susceptible'],
-    'SEIpR_s': ['Exposed', 'Infectious', 'Susceptible'],
     'SIpR': ['Exposed', 'Infectious', 'Susceptible'],
-    'SIpR_s': ['Exposed', 'Infectious', 'Susceptible'],
     'SIRS': ['Exposed', 'Infectious', 'Susceptible'],
-    'SIRS_s': ['Exposed', 'Infectious', 'Susceptible'],
     'Custom': ['Exposed', 'Infectious', 'Susceptible'],
     'Influenza': {'variables': {'S1': 'Susc_age1', 'E1': 'Incub_age1', 'Is1': 'Subc_age1', 'Ic1': 'Sympt_age1', 'Ig1': 'Comp_age1',
     'S2': 'Susc_age2', 'E2': 'Incub_age2', 'Is2': 'Subc_age2', 'Ic2': 'Sympt_age2', 'Ig2': 'Comp_age2',
@@ -323,85 +318,72 @@ def stepSIR(inits: list, timesteps: int, totpop: int, params: dict) -> dict:
     return {'time': tspan, 'S': S, 'I': I, 'R': R}
 
 
-
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSEIS(inits, simstep, totpop, theta=0, npass=0, bi=None, params=None, values=None):
+def stepSEIS(inits, timesteps, totpop, params):
     """
     Defines the model SEIS:
     - inits = (E,I,S)
     - theta = infectious individuals from neighbor sites
     """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
+    S: np.ndarray = np.zeros(timesteps)
+    E: np.ndarray = np.zeros(timesteps)
+    I: np.ndarray = np.zeros(timesteps)
+    tspan = np.arange(timesteps)
+
+    S[0], E[0], I[0] = inits
     N = totpop
+
     beta = params['beta'];
-    alpha = params['alpha'];
     e = params['e'];
     r = params['r'];
-    # delta = params['delta'];
     b = params['b'];
-    # w = params['w'];
-    # p = params['p']
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
 
-    # Model
-    Epos = (1 - e) * E + Lpos
-    Ipos = e * E + (1 - r) * I
-    Spos = S + b - Lpos + r * I
+    for i in tspan[:-1]:
+        Lpos = float(beta) * S[i] * I[i] / N # Number of new cases
 
-    # Migrating infecctious
-    migInf = Ipos
-
-    return [Epos, Ipos, Spos], Lpos, migInf
+        # Model
+        E[i+1] = (1 - e) * E[i] + Lpos
+        I[i+1] = e * E[i] + (1 - r) * I[i]
+        S[i+1] = S[i] + b - Lpos + r * I[i]
 
 
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
+    return {'time': tspan, 'S': S, 'I': I, 'E': E}
 
 
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSEIR(inits, simstep, totpop, theta=0, npass=0, bi=None, params=None, values=None):
+
+
+
+def stepSEIR(inits, timesteps, totpop, params):
     """
     Defines the model SEIR:
     - inits = (E,I,S)
     - par = (Beta, alpha, E,r,delta,B,w,p) see docs.
     - theta = infectious individuals from neighbor sites
     """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
+    S: np.ndarray = np.zeros(timesteps)
+    E: np.ndarray = np.zeros(timesteps)
+    I: np.ndarray = np.zeros(timesteps)
+    R: np.ndarray = np.zeros(timesteps)
+    tspan = np.arange(timesteps)
+
+    S[0], E[0], I[0], R[0] = inits
     N = totpop
     beta = params['beta'];
     alpha = params['alpha'];
     e = params['e'];
     r = params['r'];
-    # delta = params['delta'];
     b = params['b'];
-    # w = params['w'];
-    # p = params['p']
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
 
-    # Model
-    Epos = (1 - e) * E + Lpos
-    Ipos = e * E + (1 - r) * I
-    Spos = S + b - Lpos
-    Rpos = N - (Spos + Epos + Ipos)
+    for i in tspan[:-1]:
+        Lpos = float(beta) * S[i] * I[i] / N  # Number of new cases
 
-    # Migrating infecctious
-    migInf = Ipos
+        # Model
+        E[i+1] = (1 - e) * E[i] + Lpos
+        I[i+1] = e * E[i] + (1 - r) * I[i]
+        S[i+1] = S[i] + b - Lpos
+        R[i+1] = N - (S[i+1] + E[i+1] + I[i+1])
 
-    return [Epos, Ipos, Spos], Lpos, migInf
+
+    return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
 
 
 

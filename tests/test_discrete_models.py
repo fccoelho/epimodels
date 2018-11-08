@@ -50,5 +50,21 @@ def test_FLU():
     P.show()
     assert isinstance(modelflu, Epimodel)
 
+def test_SEIS():
+    modelseis  = Epimodel('SEIS')
+    modelseis([1000, 1, 0], 50, 1001, {'beta': 2, 'r': 1, 'e': 1, 'b': 0})
+    assert len(modelseis.traces) == 4
+    assert len(modelseis.traces['time']) == 50
+    modelseis.plot_traces()
+    P.show()
+    assert isinstance(modelseis, Epimodel)
 
-
+def test_SEIR():
+    modelseir  = Epimodel('SEIR')
+    tsteps = 50
+    modelseir([1000, 1, 1, 0], tsteps, 1002, {'beta': 2, 'r': 1, 'e': 1, 'b': 0, 'alpha': 1})
+    assert len(modelseir.traces) == 5
+    assert len(modelseir.traces['time']) == tsteps
+    modelseir.plot_traces()
+    P.show()
+    assert isinstance(modelseir, Epimodel)
