@@ -1,32 +1,32 @@
 __author__ = 'fccoelho'
 
 import pytest
-from epimodels.discrete.models import Epimodel
-import pyximport; pyximport.install(pyimport=True)
+# import pyximport; pyximport.install(pyimport=True)
+from epimodels.discrete.models import DiscreteModel
 from matplotlib import pyplot as P
 
 
 def test_SIS():
-    modelsis  = Epimodel('SIS')
+    modelsis  = DiscreteModel('SIS')
     modelsis([0, 1, 1000], 50, 1001, {'beta': 2, 'gamma': 1})
     assert len(modelsis.traces) == 3
     assert len(modelsis.traces['time']) == 50
     modelsis.plot_traces()
     P.show()
-    assert isinstance(modelsis, Epimodel)
+    assert isinstance(modelsis, DiscreteModel)
 
 
 def test_SIR():
-    modelsir  = Epimodel('SIR')
+    modelsir  = DiscreteModel('SIR')
     modelsir([1000, 1, 0], 50, 1001, {'beta': 2, 'gamma': 1})
     assert len(modelsir.traces) == 4
     assert len(modelsir.traces['time']) == 50
     modelsir.plot_traces()
     P.show()
-    assert isinstance(modelsir, Epimodel)
+    assert isinstance(modelsir, DiscreteModel)
 
 def test_FLU():
-    modelflu = Epimodel('Influenza')
+    modelflu = DiscreteModel('Influenza')
     modelflu([250,1,0,0,0,250,1,0,0,0,250,1,0,0,0,250,1,0,0,0], 50, 1004, {'beta': 2.0,
                                                                         'r': 0.25,
                                                                         'e': 0.5,
@@ -48,23 +48,23 @@ def test_FLU():
     print(list(modelflu.traces.keys()))
     modelflu.plot_traces()
     P.show()
-    assert isinstance(modelflu, Epimodel)
+    assert isinstance(modelflu, DiscreteModel)
 
 def test_SEIS():
-    modelseis  = Epimodel('SEIS')
+    modelseis  = DiscreteModel('SEIS')
     modelseis([1000, 1, 0], 50, 1001, {'beta': 2, 'r': 1, 'e': 1, 'b': 0})
     assert len(modelseis.traces) == 4
     assert len(modelseis.traces['time']) == 50
     modelseis.plot_traces()
     P.show()
-    assert isinstance(modelseis, Epimodel)
+    assert isinstance(modelseis, DiscreteModel)
 
 def test_SEIR():
-    modelseir  = Epimodel('SEIR')
+    modelseir  = DiscreteModel('SEIR')
     tsteps = 50
     modelseir([1000, 1, 1, 0], tsteps, 1002, {'beta': 2, 'r': 1, 'e': 1, 'b': 0, 'alpha': 1})
     assert len(modelseir.traces) == 5
     assert len(modelseir.traces['time']) == tsteps
     modelseir.plot_traces()
     P.show()
-    assert isinstance(modelseir, Epimodel)
+    assert isinstance(modelseir, DiscreteModel)

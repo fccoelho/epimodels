@@ -49,9 +49,9 @@ model_types = {
 }
 
 
-class Epimodel(BaseModel):
+class DiscreteModel(BaseModel):
     """
-    Defines a library of discrete time population models
+    Exposes a library of discrete time population models
     """
     def __init__(self, model_type: bytes):
         """

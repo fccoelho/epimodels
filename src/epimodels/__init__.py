@@ -14,7 +14,7 @@ from matplotlib import pyplot as P
 
 class BaseModel:
     """
-    Base class for all models
+    Base class for all models both discrete and continuous
     """
     def __init__(self):
         self.name = None
