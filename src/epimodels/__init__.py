@@ -29,4 +29,5 @@ class BaseModel:
                 continue
             P.plot(self.traces['time'], data, label=series)
         P.legend(loc=0)
+        P.grid()
         P.title("{} model".format(self.model_type))
