@@ -64,14 +64,6 @@ class DiscreteModel(BaseModel):
         :param model_type: string identifying the model type
         """
         super().__init__()
-        # try:
-        #     assert model_type in model_types
-        #     self.model_type = model_type
-        # except AssertionError:
-        #     logging.Error('Invalid model type: {}'.format(model_type))
-        # self.run = selectModel(model_type)
-        # self.state_variables = model_types[model_type]['variables']
-        # self.parameters = model_types[model_type]['parameters']
 
     def run(self, *args):
         raise NotImplementedError
@@ -82,43 +74,6 @@ class DiscreteModel(BaseModel):
         self.traces.update(res)
         # return res
 
-
-@cython.locals(Type='bytes')
-def selectModel(Type):
-    """
-    Sets the model engine
-    """
-    if Type == 'SIR':
-        return stepSIR
-    elif Type == 'SIS':
-        return stepSIS
-    elif Type == 'SEIS':
-        return stepSEIS
-    elif Type == 'SEIR':
-        return stepSEIR
-    elif Type == 'SIpRpS':
-        return stepSIpRpS
-    elif Type == 'SEIpRpS':
-        return stepSEIpRpS
-    elif Type == 'SIpR':
-        return stepSIpR
-    elif Type == 'SEIpR':
-        return stepSEIpR
-    elif Type == 'SIRS':
-        return stepSIRS
-    elif Type == 'Influenza':
-        return None
-    elif Type == 'Custom':
-        # adds the user model as a method of instance self
-        try:
-            # TODO: move this import to the graph level
-            import CustomModel
-
-            return CustomModel.Model
-        except ImportError:
-            print("You have to Create a CustomModel.py file before you can select\nthe Custom model type")
-    else:
-        sys.exit('Model type specified in .epg file is invalid')
 
 
 class Influenza(DiscreteModel):
@@ -393,189 +348,199 @@ class SEIR(DiscreteModel):
         return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
 
 
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSIpRpS(inits, simstep, totpop, theta=0, npass=0, bi=None, params=None, values=None):
-    """
-    calculates the model SIpRpS, and return its values (no demographics)
-    - inits = (E,I,S)
-    - theta = infectious individuals from neighbor sites
-    """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
-    N = totpop
-    beta = params['beta'];
-    alpha = params['alpha'];
-    # e = params['e'];
-    r = params['r'];
-    delta = params['delta'];
-    b = params['b'];
-    # w = params['w'];
-    # p = params['p']
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
+class SIpRpS(DiscreteModel):
+    def __init__(self):
+        super().__init__()
+        self.model_type = 'SIpRpS'
+        self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'R': 'Removed'}
+        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
+        self.run = self.model
 
-    # Model
-    Ipos = (1 - r) * I + Lpos
-    Spos = S + b - Lpos + (1 - delta) * r * I
-    Rpos = N - (Spos + Ipos) + delta * r * I
+    def model(self, inits, timesteps, totpop, params):
+        """
+        calculates the model SIpRpS, and return its values (no demographics)
+        - inits = (E,I,S)
+        - theta = infectious individuals from neighbor sites
+        """
+        S: np.ndarray = np.zeros(timesteps)
+        I: np.ndarray = np.zeros(timesteps)
+        R: np.ndarray = np.zeros(timesteps)
+        tspan = np.arange(timesteps)
 
-    # Migrating infecctious
-    migInf = Ipos
+        S[0], I[0], R[0] = inits
+        N = totpop
 
-    return [0, Ipos, Spos], Lpos, migInf
+        beta = params['beta'];
+        r = params['r'];
+        delta = params['delta'];
+        b = params['b'];
 
 
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSEIpRpS(inits, simstep, totpop, theta=0, npass=0, bi=None, params=None, values=None):
-    """
-    Defines the model SEIpRpS:
-    - inits = (E,I,S)
-    - theta = infectious individuals from neighbor sites
-    """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
-    N = totpop
-    beta = params['beta'];
-    alpha = params['alpha'];
-    e = params['e'];
-    r = params['r'];
-    delta = params['delta'];
-    b = params['b'];
-    # w = params['w'];
-    # p = params['p']
+        # Model
+        for i in tspan[:-1]:
+            Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
+            I[i+1] = (1 - r) * I[i] + Lpos
+            S[i+1] = S[i] + b - Lpos + (1 - delta) * r * I[i]
+            R[i+1] = N - (S[i+1] + I[i+1]) + delta * r * I[i]
 
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
+        return {'time': tspan, 'S': S, 'I': I, 'R': R}
 
-    Epos = (1 - e) * E + Lpos
-    Ipos = e * E + (1 - r) * I
-    Spos = S + b - Lpos + (1 - delta) * r * I
-    Rpos = N - (Spos + Epos + Ipos) + delta * r * I
+class SEIpRpS(DiscreteModel):
+    def __init__(self):
+        super().__init__()
+        self.model_type = 'SEIpRpS'
+        self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': "Exposed", 'R': 'Removed'}
+        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
+        self.run = self.model
 
-    # Migrating infecctious
-    migInf = Ipos
+    def model(self, inits, timesteps, totpop, params):
+        """
+        Defines the model SEIpRpS:
+        - inits = (E,I,S)
+        - theta = infectious individuals from neighbor sites
+        """
+        S: np.ndarray = np.zeros(timesteps)
+        E: np.ndarray = np.zeros(timesteps)
+        I: np.ndarray = np.zeros(timesteps)
+        R: np.ndarray = np.zeros(timesteps)
+        tspan = np.arange(timesteps)
 
-    return [Epos, Ipos, Spos], Lpos, migInf
+        S[0], E[0], I[0], R[0] = inits
+        N = totpop
 
-
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSIpR(inits, simstep, totpop, theta=0, npass=0, bi=None, params=None, values=None):
-    """
-    calculates the model SIpR, and return its values (no demographics)
-    - inits = (E,I,S)
-    - theta = infectious individuals from neighbor sites
-    """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
-    N = totpop
-    R = N - E - I - S
-    beta = params['beta'];
-    alpha = params['alpha'];
-    # e = params['e'];
-    r = params['r'];
-    # delta = params['delta'];
-    b = params['b'];
-    # w = params['w'];
-    p = params['p']
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
-    Lpos2 = p * float(beta) * R * ((I + theta) / (N + npass)) ** alpha  # number of secondary Infections
-
-    # Model
-    Ipos = (1 - r) * I + Lpos + Lpos2
-    Spos = S + b - Lpos
-    Rpos = N - (Spos + Ipos) - Lpos2
-
-    # Migrating infecctious
-    migInf = Ipos
-
-    return [0, Ipos, Spos], Lpos + Lpos2, migInf
+        beta = params['beta'];
+        e = params['e'];
+        r = params['r'];
+        delta = params['delta'];
+        b = params['b'];
 
 
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSEIpR(inits, simstep, totpop, theta=0, npass=0, bi=None, params=None, values=None):
-    """
-    calculates the model SEIpR, and return its values (no demographics)
-    - inits = (E,I,S)
-    - theta = infectious individuals from neighbor sites
-    """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
-    N = totpop
-    R = N - E - I - S
-    beta = params['beta']
-    alpha = params['alpha']
-    e = params['e']
-    r = params['r']
-    # delta = params['delta']
-    b = params['b']
-    # w = params['w']
-    p = params['p']
+        for i in tspan[:-1]:
+            Lpos = float(beta) * S[i] * (I[i] /N)  # Number of new cases
 
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
-    Lpos2 = p * float(beta) * R * ((I + theta) / (N + npass)) ** alpha  # secondary infections
+            E[i+1] = (1 - e) * E[i] + Lpos
+            I[i+1] = e * E[i] + (1 - r) * I[i]
+            S[i+1] = S[i] + b - Lpos + (1 - delta) * r * I[i]
+            R[i+1] = N - (S[i+1] + E[i+1] + I[i+1]) + delta * r * I[i]
 
-    # Model
-    Epos = (1 - e) * E + Lpos + Lpos2
-    Ipos = e * E + (1 - r) * I
-    Spos = S + b - Lpos
-    Rpos = N - (Spos + Ipos) - Lpos2
-
-    # Migrating infecctious
-    migInf = Ipos
-
-    return [0, Ipos, Spos], Lpos + Lpos2, migInf
+        return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
 
 
-@cython.locals(inits='object', simstep='long', totpop='long', theta='double', npass='double',
-               beta='double', alpha='double', E='double', I='double', S='double', N='long',
-               r='double', b='double', w='double', Lpos='double', Lpos_esp='double', R='double',
-               Ipos='double', Spos='double', Rpos='double')
-def stepSIRS(inits, simstep, totpop, theta=0, npass=0, bi=None, params=None, values=None):
-    """
-    calculates the model SIRS, and return its values (no demographics)
-    - inits = (E,I,S)
-    - theta = infectious individuals from neighbor sites
-    """
-    if simstep == 1:  # get initial values
-        E, I, S = (bi['e'], bi['i'], bi['s'])
-    else:
-        E, I, S = inits
-    N = totpop
-    R = N - (E + I + S)
-    beta = params['beta'];
-    alpha = params['alpha'];
-    # e = params['e'];
-    r = params['r'];
-    # delta = params['delta'];
-    b = params['b'];
-    w = params['w'];
-    # p = params['p']
-    Lpos = float(beta) * S * ((I + theta) / (N + npass)) ** alpha  # Number of new cases
+class SIpR(DiscreteModel):
+    def __init__(self):
+        super().__init__()
+        self.model_type = 'SIpR'
+        self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'R': 'Removed'}
+        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'r': 'r', 'p': 'p'}
+        self.run = self.model
 
-    # Model
-    Ipos = (1 - r) * I + Lpos
-    Spos = S + b - Lpos + w * R
-    Rpos = N - (Spos + Ipos) - w * R
+    def model(self, inits, timesteps, totpop, params):
+        """
+        calculates the model SIpR, and return its values (no demographics)
+        - inits = (S,I,R)
+        """
+        S: np.ndarray = np.zeros(timesteps)
+        I: np.ndarray = np.zeros(timesteps)
+        R: np.ndarray = np.zeros(timesteps)
+        tspan = np.arange(timesteps)
 
-    # Migrating infecctious
-    migInf = Ipos
+        S[0], I[0], R[0] = inits
+        N = totpop
 
-    return [0, Ipos, Spos], Lpos, migInf
+        beta = params['beta']
+        r = params['r']
+        b = params['b']
+        p = params['p']
+
+        for i in tspan[:-1]:
+            Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
+            Lpos2 = p * float(beta) * R[i] * (I[i] / N) # number of secondary Infections
+
+            # Model
+            I[i+1] = (1 - r) * I[i] + Lpos + Lpos2
+            S[i+1] = S[i] + b - Lpos
+            R[i+1] = N - (S[i+1] + I[i+1]) - Lpos2
+
+        return {'time': tspan, 'S': S, 'I': I, 'R': R}
+
+
+class SEIpR(DiscreteModel):
+    def __init__(self):
+        super().__init__()
+        self.model_type = 'SEIpR'
+        self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': "Exposed", 'R': 'Removed'}
+        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'alpha': r'$\alpha$', 'p':'p'}
+        self.run = self.model
+
+    def model(self, inits, timesteps, totpop, params):
+        """
+        calculates the model SEIpR, and return its values (no demographics)
+        - inits = (S,E,I,R)
+        """
+        S: np.ndarray = np.zeros(timesteps)
+        E: np.ndarray = np.zeros(timesteps)
+        I: np.ndarray = np.zeros(timesteps)
+        R: np.ndarray = np.zeros(timesteps)
+        tspan = np.arange(timesteps)
+
+        S[0], E[0], I[0], R[0] = inits
+        N = totpop
+
+        beta = params['beta']
+        e = params['e']
+        r = params['r']
+        b = params['b']
+        p = params['p']
+        # print(tspan)
+        for i in tspan[:-1]:
+            # print(i)
+            Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
+            Lpos2 = p * float(beta) * R[i] * (I[i] / N)  # secondary infections
+
+            # Model
+            E[i+1] = (1 - e) * E[i] + Lpos + Lpos2
+            I[i+1] = e * E[i] + (1 - r) * I[i]
+            S[i+1] = S[i] + b - Lpos
+            R[i+1] = N - (S[i+1] + I[i+1]) - Lpos2
+
+        return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
+
+
+class SIRS(DiscreteModel):
+    def __init__(self):
+        super().__init__()
+        self.model_type = 'SIRS'
+        self.state_variables = {'R': 'Removed', 'I': 'Infectious', 'S': 'Susceptible'}
+        self. parameters =  {'beta': r'$\beta$', 'b': 'b', 'w': 'w'}
+        self.run = self.model
+
+    def model(self, inits, timesteps, totpop, params):
+        """
+        calculates the model SIRS, and return its values (no demographics)
+        - inits = (E,I,S)
+        - theta = infectious individuals from neighbor sites
+        """
+        S: np.ndarray = np.zeros(timesteps)
+        I: np.ndarray = np.zeros(timesteps)
+        R: np.ndarray = np.zeros(timesteps)
+        tspan = np.arange(timesteps)
+
+        S[0], I[0], R[0] = inits
+        N = totpop
+
+        beta = params['beta'];
+        r = params['r'];
+        b = params['b'];
+        w = params['w'];
+
+        for i in tspan[:-1]:
+            Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
+
+            # Model
+            I[i+1] = (1 - r) * I[i] + Lpos
+            S[i+1] = S[i] + b - Lpos + w * R[i]
+            R[i+1] = N - (S[i+1] + I[i+1]) - w * R[i]
+
+
+
+        return {'time': tspan, 'S': S, 'I': I, 'R': R}
