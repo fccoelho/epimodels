@@ -12,6 +12,7 @@ pytest = "*"
 pytest-cov = "*"
 matplotlib = "*"
 mypy = "*"
+sphinx = "*"
 
 [dev-packages]
 
