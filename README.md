@@ -3,12 +3,20 @@
 
 
 
-Add a short description here!
+This library a simple interface to simulate mathematical epidemic models.
+ 
 
 
-## Description
+## Getting started
 
 
-A longer description of your project goes here...
+Simple SIR simulation
+
+```python
+from epimodels.continuous.models import SIR
+model = SIR()
+model([1000, 1, 0], [0, 50], 1001, {'beta': 2, 'gamma': .1})
+model.plot_traces()
+```
 
 
