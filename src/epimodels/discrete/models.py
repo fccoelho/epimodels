@@ -95,31 +95,31 @@ class Influenza(DiscreteModel):
         }
         self.run = self.model
 
-    def model(self, inits: list, timesteps: int, totpop: int, params: dict) -> dict:
+    def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
         Flu model with classes S,E,I subclinical, I mild, I medium, I serious, deaths
         """
-        S1 = np.zeros(timesteps)
-        E1 = np.zeros(timesteps)
-        Is1 = np.zeros(timesteps)
-        Ic1 = np.zeros(timesteps)
-        Ig1 = np.zeros(timesteps)
-        S2 = np.zeros(timesteps)
-        E2 = np.zeros(timesteps)
-        Is2 = np.zeros(timesteps)
-        Ic2 = np.zeros(timesteps)
-        Ig2 = np.zeros(timesteps)
-        S3 = np.zeros(timesteps)
-        E3 = np.zeros(timesteps)
-        Is3 = np.zeros(timesteps)
-        Ic3 = np.zeros(timesteps)
-        Ig3 = np.zeros(timesteps)
-        S4 = np.zeros(timesteps)
-        E4 = np.zeros(timesteps)
-        Is4 = np.zeros(timesteps)
-        Ic4 = np.zeros(timesteps)
-        Ig4 = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S1 = np.zeros(trange[1]-trange[0])
+        E1 = np.zeros(trange[1]-trange[0])
+        Is1 = np.zeros(trange[1]-trange[0])
+        Ic1 = np.zeros(trange[1]-trange[0])
+        Ig1 = np.zeros(trange[1]-trange[0])
+        S2 = np.zeros(trange[1]-trange[0])
+        E2 = np.zeros(trange[1]-trange[0])
+        Is2 = np.zeros(trange[1]-trange[0])
+        Ic2 = np.zeros(trange[1]-trange[0])
+        Ig2 = np.zeros(trange[1]-trange[0])
+        S3 = np.zeros(trange[1]-trange[0])
+        E3 = np.zeros(trange[1]-trange[0])
+        Is3 = np.zeros(trange[1]-trange[0])
+        Ic3 = np.zeros(trange[1]-trange[0])
+        Ig3 = np.zeros(trange[1]-trange[0])
+        S4 = np.zeros(trange[1]-trange[0])
+        E4 = np.zeros(trange[1]-trange[0])
+        Is4 = np.zeros(trange[1]-trange[0])
+        Ic4 = np.zeros(trange[1]-trange[0])
+        Ig4 = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S1[0], E1[0], Is1[0], Ic1[0], Ig1[0], S2[0], E2[0], Is2[0], Ic2[0], Ig2[0], S3[0], E3[0], Is3[0], Ic3[0], Ig3[
             0], S4[0], E4[0], Is4[0], Ic4[0], Ig4[0] = inits
@@ -206,21 +206,21 @@ class SIS(DiscreteModel):
         self.parameters = {'beta': r'\beta', 'gamma': r'\gamma'}
         self.run = self.model
 
-    def model(self, inits: list, timesteps: int, totpop: int, params: dict) -> dict:
+    def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
         calculates the model SIS, and return its values (no demographics)
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
-        :param timesteps:
+        :param trange:
         :param params:
         :param inits: tuple with initial conditions
         :param simstep: step of the simulation
         :param totpop: total population
         :return:
         """
-        S: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
         E, I[0], S[0] = inits
         N = totpop
 
@@ -244,16 +244,16 @@ class SIR(DiscreteModel):
         self. parameters =  {'beta': r'\beta', 'gamma': r'\gamma'}
         self.run = self.model
 
-    def model(self, inits: list, timesteps: int, totpop: int, params: dict) -> dict:
+    def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
         calculates the model SIR, and return its values (no demographics)
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        R: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
         N = totpop
@@ -278,16 +278,16 @@ class SEIS(DiscreteModel):
         self. parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r'}
         self.run = self.model
 
-    def model(self, inits, timesteps, totpop, params):
+    def model(self, inits, trange, totpop, params):
         """
         Defines the model SEIS:
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(timesteps)
-        E: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        E: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], E[0], I[0] = inits
         N = totpop
@@ -315,18 +315,18 @@ class SEIR(DiscreteModel):
         self. parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r', 'alpha': r'\alpha'}
         self.run = self.model
 
-    def model(self, inits, timesteps, totpop, params):
+    def model(self, inits, trange, totpop, params):
         """
         Defines the model SEIR:
         - inits = (E,I,S)
         - par = (Beta, alpha, E,r,delta,B,w,p) see docs.
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(timesteps)
-        E: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        R: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        E: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], E[0], I[0], R[0] = inits
         N = totpop
@@ -356,16 +356,16 @@ class SIpRpS(DiscreteModel):
         self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
         self.run = self.model
 
-    def model(self, inits, timesteps, totpop, params):
+    def model(self, inits, trange, totpop, params):
         """
         calculates the model SIpRpS, and return its values (no demographics)
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        R: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
         N = totpop
@@ -393,17 +393,17 @@ class SEIpRpS(DiscreteModel):
         self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
         self.run = self.model
 
-    def model(self, inits, timesteps, totpop, params):
+    def model(self, inits, trange, totpop, params):
         """
         Defines the model SEIpRpS:
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(timesteps)
-        E: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        R: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        E: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], E[0], I[0], R[0] = inits
         N = totpop
@@ -434,15 +434,15 @@ class SIpR(DiscreteModel):
         self. parameters = {'b': 'b', 'beta': r'$\beta$', 'r': 'r', 'p': 'p'}
         self.run = self.model
 
-    def model(self, inits, timesteps, totpop, params):
+    def model(self, inits, trange, totpop, params):
         """
         calculates the model SIpR, and return its values (no demographics)
         - inits = (S,I,R)
         """
-        S: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        R: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
         N = totpop
@@ -472,16 +472,16 @@ class SEIpR(DiscreteModel):
         self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'alpha': r'$\alpha$', 'p':'p'}
         self.run = self.model
 
-    def model(self, inits, timesteps, totpop, params):
+    def model(self, inits, trange, totpop, params):
         """
         calculates the model SEIpR, and return its values (no demographics)
         - inits = (S,E,I,R)
         """
-        S: np.ndarray = np.zeros(timesteps)
-        E: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        R: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        E: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], E[0], I[0], R[0] = inits
         N = totpop
@@ -514,16 +514,16 @@ class SIRS(DiscreteModel):
         self. parameters =  {'beta': r'$\beta$', 'b': 'b', 'w': 'w'}
         self.run = self.model
 
-    def model(self, inits, timesteps, totpop, params):
+    def model(self, inits, trange, totpop, params):
         """
         calculates the model SIRS, and return its values (no demographics)
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(timesteps)
-        I: np.ndarray = np.zeros(timesteps)
-        R: np.ndarray = np.zeros(timesteps)
-        tspan = np.arange(timesteps)
+        S: np.ndarray = np.zeros(trange[1]-trange[0])
+        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
         N = totpop

@@ -20,3 +20,6 @@ model.plot_traces()
 ```
 
 
+### Related libraries
+
+For stochastic epidemic models check [this](https://github.com/fccoelho/EpiStochModels).
