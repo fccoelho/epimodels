@@ -10,7 +10,7 @@ from epimodels.continuous.models import *
 
 def test_SIR():
     model = SIR()
-    model([1000, 1, 0], [0, 50], 1001, {'beta': 2, 'gamma': .1})
+    model([1000, 1, 0], [0, 500], 1001, {'beta': .2, 'gamma': .1})
     assert len(model.traces) == 4
     # assert len(model.traces['time']) == 50
     model.plot_traces()
@@ -48,8 +48,8 @@ def test_SEIR():
 def test_SEQIAHR():
     model = SEQIAHR()
     model([1000, 0, 1, 0, 0, 0, 0], [0, 50], 1001, {'chi': .3, 'phi': .01, 'beta': .5,
-                                                    'rho': 1, 'delta': .1, 'alpha': 2,
-                                                    'p': .75, 'q': 30
+                                                    'rho': .15, 'delta': .1, 'alpha': 2, 'mu': .03,
+                                                    'p': .75, 'q': 30, 'r': 20
                                                     })
     # print(model.traces)
     assert len(model.traces) == 8  # state variables plus time

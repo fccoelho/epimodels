@@ -18,9 +18,9 @@ def test_SIS():
 
 def test_SIR():
     modelsir = SIR()
-    modelsir([1000, 1, 0], [0,50], 1001, {'beta': 2, 'gamma': 1})
+    modelsir([1000, 1, 0], [0,500], 1001, {'beta': .2, 'gamma': .1})
     assert len(modelsir.traces) == 4
-    assert len(modelsir.traces['time']) == 50
+    assert len(modelsir.traces['time']) == 500
     modelsir.plot_traces()
     P.show()
     assert isinstance(modelsir, DiscreteModel)

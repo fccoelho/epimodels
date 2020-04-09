@@ -147,22 +147,23 @@ class SEQIAHR(ContinuousModel):
         super().__init__()
         self.state_variables = OrderedDict({'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized', 'R': 'Removed', 'C': 'Cumulative hospitalizations'})
         self.parameters = OrderedDict({'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
-                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$',
-                                        'p': '$p$', 'q': '$q$'
+                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
+                                        'p': '$p$', 'q': '$q$', 'r': '$r$'
                                        })
         self.model_type = 'SEQIAHR'
 
     def model(self, t: float, y: list, params: dict) -> list:
         S, E, I, A, H, R, C = y
-        chi, phi, beta, rho, delta, alpha, p, q, N = params.values()
-        lamb = beta * S * (I + A + (1 - rho) * H)
+        chi, phi, beta, rho, delta, alpha, mu, p, q, r, N = params.values()
+        lamb = beta * S * (I + A)
         chi *= (1 + np.tanh(t - q)) / 2  # Liga a quarentena dia q
+        chi *= (1 - np.tanh(t - q+r)) / 2
         return [
             -lamb * (1 - chi) * S,  # dS/dt
             lamb * (1 - chi) * S - alpha * E,  # dE/dt
             (1 - p) * alpha * E - delta * I,  # dI/dt
             p * alpha * E - delta * A,
-            phi * delta * I - delta * H,  # dH/dt
-            (1 - phi) * delta * I + delta * H + delta * A,  # dR/dt
+            phi * delta * I - (rho+mu) * H,  # dH/dt
+            (1 - phi) * delta * I + rho * H + delta * A,  # dR/dt
             phi * I  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
         ]
