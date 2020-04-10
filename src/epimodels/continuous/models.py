@@ -162,11 +162,12 @@ class SEQIAHR(ContinuousModel):
         # Turns on Quarantine on day q and off on day q+r
         chi *= ((1 + np.tanh(t - q)) / 2) * ((1 - np.tanh(t - (q + r))) / 2)
         return [
-            -lamb * (1 - chi) * S,  # dS/dt
-            lamb * (1 - chi) * S - alpha * E,  # dE/dt
+            -lamb * ((1 - chi) * S),  # dS/dt
+            lamb * ((1 - chi) * S) - alpha * E,  # dE/dt
             (1 - p) * alpha * E - delta * I,  # dI/dt
             p * alpha * E - delta * A,
             phi * delta * I - (rho + mu) * H,  # dH/dt
             (1 - phi) * delta * I + rho * H + delta * A,  # dR/dt
             phi * I  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
         ]
+
