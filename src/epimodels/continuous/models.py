@@ -83,7 +83,7 @@ class SIS(ContinuousModel):
         self.state_variables = OrderedDict({'S': 'Susceptible', 'I': 'Infectious'})
         self.parameters = {'beta': r'\beta', 'gamma': r'\gamma'}
         self.model_type = 'SIS'
-    
+
     # @lru_cache(1000)
     def model(self, t: float, y: list, params: dict) -> list:
         """
@@ -142,28 +142,31 @@ class SEIR(ContinuousModel):
             gamma * I
         ]
 
+
 class SEQIAHR(ContinuousModel):
     def __init__(self):
         super().__init__()
-        self.state_variables = OrderedDict({'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized', 'R': 'Removed', 'C': 'Cumulative hospitalizations'})
+        self.state_variables = OrderedDict(
+            {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
+             'R': 'Removed', 'C': 'Cumulative hospitalizations'})
         self.parameters = OrderedDict({'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
                                        'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
-                                        'p': '$p$', 'q': '$q$', 'r': '$r$'
+                                       'p': '$p$', 'q': '$q$', 'r': '$r$'
                                        })
         self.model_type = 'SEQIAHR'
 
     def model(self, t: float, y: list, params: dict) -> list:
         S, E, I, A, H, R, C = y
         chi, phi, beta, rho, delta, alpha, mu, p, q, r, N = params.values()
-        lamb = beta * S * (I + A)
-        chi *= (1 + np.tanh(t - q)) / 2  # Liga a quarentena dia q
-        chi *= (1 - np.tanh(t - q+r)) / 2
+        lamb = beta * (I + A)
+        # Turns on Quarantine on day q and off on day q+r
+        chi *= ((1 + np.tanh(t - q)) / 2) * ((1 - np.tanh(t - (q + r))) / 2)
         return [
             -lamb * (1 - chi) * S,  # dS/dt
             lamb * (1 - chi) * S - alpha * E,  # dE/dt
             (1 - p) * alpha * E - delta * I,  # dI/dt
             p * alpha * E - delta * A,
-            phi * delta * I - (rho+mu) * H,  # dH/dt
+            phi * delta * I - (rho + mu) * H,  # dH/dt
             (1 - phi) * delta * I + rho * H + delta * A,  # dR/dt
             phi * I  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
         ]

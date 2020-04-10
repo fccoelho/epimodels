@@ -47,9 +47,9 @@ def test_SEIR():
 
 def test_SEQIAHR():
     model = SEQIAHR()
-    model([1000, 0, 1, 0, 0, 0, 0], [0, 50], 1001, {'chi': .3, 'phi': .01, 'beta': .5,
-                                                    'rho': .15, 'delta': .1, 'alpha': 2, 'mu': .03,
-                                                    'p': .75, 'q': 30, 'r': 20
+    model([.99, 0, 1e-6, 0, 0, 0, 0], [0, 300], 1, {'chi': .7, 'phi': .01, 'beta': .5,
+                                                    'rho': .05, 'delta': .1, 'alpha': .33, 'mu': .03,
+                                                    'p': .75, 'q': 50, 'r': 40
                                                     })
     # print(model.traces)
     assert len(model.traces) == 8  # state variables plus time
