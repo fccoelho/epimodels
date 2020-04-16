@@ -2,7 +2,8 @@ __author__ = 'fccoelho'
 
 import pytest
 # import pyximport; pyximport.install(pyimport=True)
-from epimodels.discrete.models import DiscreteModel, Influenza, SIS, SIR, SEIS, SEIR, SIpRpS, SEIpRpS, SIpR, SEIpR, SIRS
+from epimodels.discrete.models import (DiscreteModel, Influenza, SIS, SIR, SEIS, SEIR,
+                                       SIpRpS, SEIpRpS, SIpR, SEIpR, SIRS, SEQIAHR)
 from matplotlib import pyplot as P
 
 
@@ -125,3 +126,14 @@ def test_SIRS():
     modelsirs.plot_traces()
     P.show()
     assert isinstance(modelsirs, DiscreteModel)
+
+def test_SEQIAHR():
+    model = SEQIAHR()
+    model([.99, 0, 1e-6, 0, 0, 0, 0, 0], [0, 300], 1, {'chi': .7, 'phi': .01, 'beta': .5,
+                                                    'rho': .05, 'delta': .1, 'alpha': .33, 'mu': .03,
+                                                    'p': .75, 'q': 50, 'r': 40
+                                                    })
+    assert len(model.traces) == 9
+    model.plot_traces()
+    P.show()
+    assert isinstance(model, DiscreteModel)

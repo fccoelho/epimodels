@@ -60,6 +60,7 @@ class SIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'\beta', 'gamma': r'\gamma'})
         self.model_type = 'SIR'
 
+
     def model(self, t: float, y: list, params: dict) -> list:
         """
         SIR Model.
@@ -148,7 +149,7 @@ class SEQIAHR(ContinuousModel):
         super().__init__()
         self.state_variables = OrderedDict(
             {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
-             'R': 'Removed', 'C': 'Cumulative hospitalizations'})
+             'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'})
         self.parameters = OrderedDict({'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
                                        'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
                                        'p': '$p$', 'q': '$q$', 'r': '$r$'
@@ -156,7 +157,7 @@ class SEQIAHR(ContinuousModel):
         self.model_type = 'SEQIAHR'
 
     def model(self, t: float, y: list, params: dict) -> list:
-        S, E, I, A, H, R, C = y
+        S, E, I, A, H, R, C, D = y
         chi, phi, beta, rho, delta, alpha, mu, p, q, r, N = params.values()
         lamb = beta * (I + A)
         # Turns on Quarantine on day q and off on day q+r
@@ -168,6 +169,7 @@ class SEQIAHR(ContinuousModel):
             p * alpha * E - delta * A,
             phi * delta * I - (rho + mu) * H,  # dH/dt
             (1 - phi) * delta * I + rho * H + delta * A,  # dR/dt
-            phi * I  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
+            phi * delta * I,  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
+            mu*H  # Morte acumuladas
         ]
 

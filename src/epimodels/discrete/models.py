@@ -12,6 +12,7 @@ from scipy.stats.distributions import poisson, nbinom
 from numpy import inf, nan, nan_to_num
 import sys
 import logging
+from collections import OrderedDict
 import cython
 from epimodels import BaseModel
 
@@ -48,6 +49,14 @@ model_types = {
                       'pp1': r'pp_1', 'pp2': r'pp_2', 'pp3': r'pp_3', 'pp4': r'pp_4', 'b': 'b'
                   }
                   },
+    'SEQIAHR': {'variables': {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
+             'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'},
+                'parameters': {'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
+                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
+                                       'p': '$p$', 'q': '$q$', 'r': '$r$'
+                                       }
+
+    }
 }
 
 
@@ -544,3 +553,54 @@ class SIRS(DiscreteModel):
 
 
         return {'time': tspan, 'S': S, 'I': I, 'R': R}
+
+class SEQIAHR(DiscreteModel):
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict(
+            {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
+             'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'})
+        self.parameters = OrderedDict({'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
+                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
+                                       'p': '$p$', 'q': '$q$', 'r': '$r$'
+                                       })
+        self.model_type = 'SEQIAHR'
+
+        self.run = self.model
+
+    def model(self, inits, trange, totpop, params) -> list:
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        E: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        A: np.ndarray = np.zeros(trange[1] - trange[0])
+        H: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
+        C: np.ndarray = np.zeros(trange[1] - trange[0])
+        D: np.ndarray = np.zeros(trange[1] - trange[0])
+        tspan = np.arange(*trange)
+
+        S[0], E[0], I[0], A[0], H[0], R[0], C[0], D[0] = inits
+
+        N = totpop
+        chi, phi, beta, rho, delta, alpha, mu, p, q, r = params.values()
+
+        for i in tspan[:-1]:
+            ##### Modeling the number of new cases (incidence function)
+            Lpos = beta * ((1-chi)*S[i]) * (I[i] + A[i])  # Number of new cases
+            # Turns on Quarantine on day q and off on day q+r
+            chi *= ((1 + np.tanh(i - q)) / 2) * ((1 - np.tanh(i - (q + r))) / 2)
+            ##### Epidemiological model (SEQIAHR)
+            S[i+1] = S[i] - Lpos
+            E[i+1] = E[i] + Lpos - alpha * E[i]
+            I[i+1] = I[i] + (1 - p) * alpha * E[i] - delta * I[i]
+            A[i+1] = A[i] + p * alpha * E[i] - delta * A[i]
+            H[i+1] = H[i] + phi * delta * I[i] - (rho + mu) * H[i]
+            R[i+1] = R[i] + (1-phi) * delta * I[i] + rho*H[i] + delta * A[i]
+            C[i+1] = phi * delta * I[i]
+            D[i+1] = mu * H[i]
+
+
+        return {'time': tspan, 'S': S, 'E': E, 'I': I,'A': A, 'H': H, 'R': R, 'C': C, 'D': D}
+
+
+
