@@ -49,14 +49,15 @@ model_types = {
                       'pp1': r'pp_1', 'pp2': r'pp_2', 'pp3': r'pp_3', 'pp4': r'pp_4', 'b': 'b'
                   }
                   },
-    'SEQIAHR': {'variables': {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
-             'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'},
-                'parameters': {'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
-                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
-                                       'p': '$p$', 'q': '$q$', 'r': '$r$'
-                                       }
+    'SEQIAHR': {
+        'variables': {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
+                      'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'},
+        'parameters': {'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
+                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
+                       'p': '$p$', 'q': '$q$', 'r': '$r$'
+                       }
 
-    }
+        }
 }
 
 
@@ -67,10 +68,7 @@ class DiscreteModel(BaseModel):
 
     def __init__(self):
         """
-        defines which models a given site will use
-        and set variable names accordingly.
-        :param parallel: Boolean for parallel execution
-        :param model_type: string identifying the model type
+        Difference equation based model (discrete time)
         """
         super().__init__()
 
@@ -82,7 +80,6 @@ class DiscreteModel(BaseModel):
         res = self.run(*args)
         self.traces.update(res)
         # return res
-
 
 
 class Influenza(DiscreteModel):
@@ -108,26 +105,26 @@ class Influenza(DiscreteModel):
         """
         Flu model with classes S,E,I subclinical, I mild, I medium, I serious, deaths
         """
-        S1 = np.zeros(trange[1]-trange[0])
-        E1 = np.zeros(trange[1]-trange[0])
-        Is1 = np.zeros(trange[1]-trange[0])
-        Ic1 = np.zeros(trange[1]-trange[0])
-        Ig1 = np.zeros(trange[1]-trange[0])
-        S2 = np.zeros(trange[1]-trange[0])
-        E2 = np.zeros(trange[1]-trange[0])
-        Is2 = np.zeros(trange[1]-trange[0])
-        Ic2 = np.zeros(trange[1]-trange[0])
-        Ig2 = np.zeros(trange[1]-trange[0])
-        S3 = np.zeros(trange[1]-trange[0])
-        E3 = np.zeros(trange[1]-trange[0])
-        Is3 = np.zeros(trange[1]-trange[0])
-        Ic3 = np.zeros(trange[1]-trange[0])
-        Ig3 = np.zeros(trange[1]-trange[0])
-        S4 = np.zeros(trange[1]-trange[0])
-        E4 = np.zeros(trange[1]-trange[0])
-        Is4 = np.zeros(trange[1]-trange[0])
-        Ic4 = np.zeros(trange[1]-trange[0])
-        Ig4 = np.zeros(trange[1]-trange[0])
+        S1 = np.zeros(trange[1] - trange[0])
+        E1 = np.zeros(trange[1] - trange[0])
+        Is1 = np.zeros(trange[1] - trange[0])
+        Ic1 = np.zeros(trange[1] - trange[0])
+        Ig1 = np.zeros(trange[1] - trange[0])
+        S2 = np.zeros(trange[1] - trange[0])
+        E2 = np.zeros(trange[1] - trange[0])
+        Is2 = np.zeros(trange[1] - trange[0])
+        Ic2 = np.zeros(trange[1] - trange[0])
+        Ig2 = np.zeros(trange[1] - trange[0])
+        S3 = np.zeros(trange[1] - trange[0])
+        E3 = np.zeros(trange[1] - trange[0])
+        Is3 = np.zeros(trange[1] - trange[0])
+        Ic3 = np.zeros(trange[1] - trange[0])
+        Ig3 = np.zeros(trange[1] - trange[0])
+        S4 = np.zeros(trange[1] - trange[0])
+        E4 = np.zeros(trange[1] - trange[0])
+        Is4 = np.zeros(trange[1] - trange[0])
+        Ic4 = np.zeros(trange[1] - trange[0])
+        Ig4 = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S1[0], E1[0], Is1[0], Ic1[0], Ig1[0], S2[0], E2[0], Is2[0], Ic2[0], Ig2[0], S3[0], E3[0], Is3[0], Ic3[0], Ig3[
@@ -166,7 +163,7 @@ class Influenza(DiscreteModel):
             # beta=eval(values[2])
 
             Infectantes = Ig1[i] + Ig2[i] + Ig3[i] + Ig4[i] + Ic1[i] + Ic2[i] + Ic3[i] + Ic4[i] + 0.5 * (
-                        Is1[i] + Is2[i] + Is3[i] + Is4[i])
+                    Is1[i] + Is2[i] + Is3[i] + Is4[i])
             L1pos = float(beta) * S1[i] * Infectantes / N
             L2pos = float(beta) * S2[i] * Infectantes / N
             L3pos = float(beta) * S3[i] * Infectantes / N
@@ -227,8 +224,8 @@ class SIS(DiscreteModel):
         :param totpop: total population
         :return:
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
         E, I[0], S[0] = inits
         N = totpop
@@ -250,7 +247,7 @@ class SIR(DiscreteModel):
         super().__init__()
         self.model_type = 'SIR'
         self.state_variables = {'R': 'Removed', 'I': 'Infectious', 'S': 'Susceptible'}
-        self. parameters =  {'beta': r'\beta', 'gamma': r'\gamma'}
+        self.parameters = {'beta': r'\beta', 'gamma': r'\gamma'}
         self.run = self.model
 
     def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
@@ -259,9 +256,9 @@ class SIR(DiscreteModel):
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
-        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
@@ -284,7 +281,7 @@ class SEIS(DiscreteModel):
         super().__init__()
         self.model_type = 'SEIS'
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': 'Exposed'}
-        self. parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r'}
+        self.parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r'}
         self.run = self.model
 
     def model(self, inits, trange, totpop, params):
@@ -293,9 +290,9 @@ class SEIS(DiscreteModel):
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        E: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        E: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], E[0], I[0] = inits
@@ -316,12 +313,13 @@ class SEIS(DiscreteModel):
 
         return {'time': tspan, 'S': S, 'I': I, 'E': E}
 
+
 class SEIR(DiscreteModel):
     def __init__(self):
         super().__init__()
         self.model_type = 'SEIR'
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': 'Exposed', 'R': 'Removed'}
-        self. parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r', 'alpha': r'\alpha'}
+        self.parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r', 'alpha': r'\alpha'}
         self.run = self.model
 
     def model(self, inits, trange, totpop, params):
@@ -331,10 +329,10 @@ class SEIR(DiscreteModel):
         - par = (Beta, alpha, E,r,delta,B,w,p) see docs.
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        E: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
-        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        E: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], E[0], I[0], R[0] = inits
@@ -362,7 +360,7 @@ class SIpRpS(DiscreteModel):
         super().__init__()
         self.model_type = 'SIpRpS'
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'R': 'Removed'}
-        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
+        self.parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
         self.run = self.model
 
     def model(self, inits, trange, totpop, params):
@@ -371,9 +369,9 @@ class SIpRpS(DiscreteModel):
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
-        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
@@ -384,22 +382,22 @@ class SIpRpS(DiscreteModel):
         delta = params['delta'];
         b = params['b'];
 
-
         # Model
         for i in tspan[:-1]:
             Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
-            I[i+1] = (1 - r) * I[i] + Lpos
-            S[i+1] = S[i] + b - Lpos + (1 - delta) * r * I[i]
-            R[i+1] = N - (S[i+1] + I[i+1]) + delta * r * I[i]
+            I[i + 1] = (1 - r) * I[i] + Lpos
+            S[i + 1] = S[i] + b - Lpos + (1 - delta) * r * I[i]
+            R[i + 1] = N - (S[i + 1] + I[i + 1]) + delta * r * I[i]
 
         return {'time': tspan, 'S': S, 'I': I, 'R': R}
+
 
 class SEIpRpS(DiscreteModel):
     def __init__(self):
         super().__init__()
         self.model_type = 'SEIpRpS'
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': "Exposed", 'R': 'Removed'}
-        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
+        self.parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
         self.run = self.model
 
     def model(self, inits, trange, totpop, params):
@@ -408,10 +406,10 @@ class SEIpRpS(DiscreteModel):
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        E: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
-        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        E: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], E[0], I[0], R[0] = inits
@@ -423,14 +421,13 @@ class SEIpRpS(DiscreteModel):
         delta = params['delta'];
         b = params['b'];
 
-
         for i in tspan[:-1]:
-            Lpos = float(beta) * S[i] * (I[i] /N)  # Number of new cases
+            Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
 
-            E[i+1] = (1 - e) * E[i] + Lpos
-            I[i+1] = e * E[i] + (1 - r) * I[i]
-            S[i+1] = S[i] + b - Lpos + (1 - delta) * r * I[i]
-            R[i+1] = N - (S[i+1] + E[i+1] + I[i+1]) + delta * r * I[i]
+            E[i + 1] = (1 - e) * E[i] + Lpos
+            I[i + 1] = e * E[i] + (1 - r) * I[i]
+            S[i + 1] = S[i] + b - Lpos + (1 - delta) * r * I[i]
+            R[i + 1] = N - (S[i + 1] + E[i + 1] + I[i + 1]) + delta * r * I[i]
 
         return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
 
@@ -440,7 +437,7 @@ class SIpR(DiscreteModel):
         super().__init__()
         self.model_type = 'SIpR'
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'R': 'Removed'}
-        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'r': 'r', 'p': 'p'}
+        self.parameters = {'b': 'b', 'beta': r'$\beta$', 'r': 'r', 'p': 'p'}
         self.run = self.model
 
     def model(self, inits, trange, totpop, params):
@@ -448,9 +445,9 @@ class SIpR(DiscreteModel):
         calculates the model SIpR, and return its values (no demographics)
         - inits = (S,I,R)
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
-        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
@@ -463,12 +460,12 @@ class SIpR(DiscreteModel):
 
         for i in tspan[:-1]:
             Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
-            Lpos2 = p * float(beta) * R[i] * (I[i] / N) # number of secondary Infections
+            Lpos2 = p * float(beta) * R[i] * (I[i] / N)  # number of secondary Infections
 
             # Model
-            I[i+1] = (1 - r) * I[i] + Lpos + Lpos2
-            S[i+1] = S[i] + b - Lpos
-            R[i+1] = N - (S[i+1] + I[i+1]) - Lpos2
+            I[i + 1] = (1 - r) * I[i] + Lpos + Lpos2
+            S[i + 1] = S[i] + b - Lpos
+            R[i + 1] = N - (S[i + 1] + I[i + 1]) - Lpos2
 
         return {'time': tspan, 'S': S, 'I': I, 'R': R}
 
@@ -478,7 +475,7 @@ class SEIpR(DiscreteModel):
         super().__init__()
         self.model_type = 'SEIpR'
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': "Exposed", 'R': 'Removed'}
-        self. parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'alpha': r'$\alpha$', 'p':'p'}
+        self.parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'alpha': r'$\alpha$', 'p': 'p'}
         self.run = self.model
 
     def model(self, inits, trange, totpop, params):
@@ -486,10 +483,10 @@ class SEIpR(DiscreteModel):
         calculates the model SEIpR, and return its values (no demographics)
         - inits = (S,E,I,R)
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        E: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
-        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        E: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], E[0], I[0], R[0] = inits
@@ -507,10 +504,10 @@ class SEIpR(DiscreteModel):
             Lpos2 = p * float(beta) * R[i] * (I[i] / N)  # secondary infections
 
             # Model
-            E[i+1] = (1 - e) * E[i] + Lpos + Lpos2
-            I[i+1] = e * E[i] + (1 - r) * I[i]
-            S[i+1] = S[i] + b - Lpos
-            R[i+1] = N - (S[i+1] + I[i+1]) - Lpos2
+            E[i + 1] = (1 - e) * E[i] + Lpos + Lpos2
+            I[i + 1] = e * E[i] + (1 - r) * I[i]
+            S[i + 1] = S[i] + b - Lpos
+            R[i + 1] = N - (S[i + 1] + I[i + 1]) - Lpos2
 
         return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
 
@@ -520,7 +517,7 @@ class SIRS(DiscreteModel):
         super().__init__()
         self.model_type = 'SIRS'
         self.state_variables = {'R': 'Removed', 'I': 'Infectious', 'S': 'Susceptible'}
-        self. parameters =  {'beta': r'$\beta$', 'b': 'b', 'w': 'w'}
+        self.parameters = {'beta': r'$\beta$', 'b': 'b', 'w': 'w'}
         self.run = self.model
 
     def model(self, inits, trange, totpop, params):
@@ -529,9 +526,9 @@ class SIRS(DiscreteModel):
         - inits = (E,I,S)
         - theta = infectious individuals from neighbor sites
         """
-        S: np.ndarray = np.zeros(trange[1]-trange[0])
-        I: np.ndarray = np.zeros(trange[1]-trange[0])
-        R: np.ndarray = np.zeros(trange[1]-trange[0])
+        S: np.ndarray = np.zeros(trange[1] - trange[0])
+        I: np.ndarray = np.zeros(trange[1] - trange[0])
+        R: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
 
         S[0], I[0], R[0] = inits
@@ -546,13 +543,12 @@ class SIRS(DiscreteModel):
             Lpos = float(beta) * S[i] * (I[i] / N)  # Number of new cases
 
             # Model
-            I[i+1] = (1 - r) * I[i] + Lpos
-            S[i+1] = S[i] + b - Lpos + w * R[i]
-            R[i+1] = N - (S[i+1] + I[i+1]) - w * R[i]
-
-
+            I[i + 1] = (1 - r) * I[i] + Lpos
+            S[i + 1] = S[i] + b - Lpos + w * R[i]
+            R[i + 1] = N - (S[i + 1] + I[i + 1]) - w * R[i]
 
         return {'time': tspan, 'S': S, 'I': I, 'R': R}
+
 
 class SEQIAHR(DiscreteModel):
     def __init__(self):
@@ -585,22 +581,19 @@ class SEQIAHR(DiscreteModel):
         chi, phi, beta, rho, delta, alpha, mu, p, q, r = params.values()
 
         for i in tspan[:-1]:
-            ##### Modeling the number of new cases (incidence function)
-            Lpos = beta * ((1-chi)*S[i]) * (I[i] + A[i])  # Number of new cases
             # Turns on Quarantine on day q and off on day q+r
-            chi *= ((1 + np.tanh(i - q)) / 2) * ((1 - np.tanh(i - (q + r))) / 2)
+            chi_t = chi * ((1 + np.tanh(i - q)) / 2) * ((1 - np.tanh(i - (q + r))) / 2)
+            ##### Modeling the number of new cases (incidence function)
+            Lpos = beta * ((1 - chi_t) * S[i]) * (I[i] + A[i])  # Number of new cases
+
             ##### Epidemiological model (SEQIAHR)
-            S[i+1] = S[i] - Lpos
-            E[i+1] = E[i] + Lpos - alpha * E[i]
-            I[i+1] = I[i] + (1 - p) * alpha * E[i] - delta * I[i]
-            A[i+1] = A[i] + p * alpha * E[i] - delta * A[i]
-            H[i+1] = H[i] + phi * delta * I[i] - (rho + mu) * H[i]
-            R[i+1] = R[i] + (1-phi) * delta * I[i] + rho*H[i] + delta * A[i]
-            C[i+1] = phi * delta * I[i]
-            D[i+1] = mu * H[i]
+            S[i + 1] = S[i] - Lpos
+            E[i + 1] = E[i] + Lpos - alpha * E[i]
+            I[i + 1] = I[i] + (1 - p) * alpha * E[i] - delta * I[i]
+            A[i + 1] = A[i] + p * alpha * E[i] - delta * A[i]
+            H[i + 1] = H[i] + phi * delta * I[i] - (rho + mu) * H[i]
+            R[i + 1] = R[i] + (1 - phi) * delta * I[i] + rho * H[i] + delta * A[i]
+            C[i + 1] = C[i] + phi * delta * I[i]
+            D[i + 1] = D[i] + mu * H[i]
 
-
-        return {'time': tspan, 'S': S, 'E': E, 'I': I,'A': A, 'H': H, 'R': R, 'C': C, 'D': D}
-
-
-
+        return {'time': tspan, 'S': S, 'E': E, 'I': I, 'A': A, 'H': H, 'R': R, 'C': C, 'D': D}

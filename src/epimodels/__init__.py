@@ -23,11 +23,14 @@ class BaseModel:
         self.parameters = {}
         self.traces = {}
 
-    def plot_traces(self):
+    def plot_traces(self, vars: list=[]):
+        """
+        Plots the simulations
+        :param vars: variables to plot
+        """
         for series, data in self.traces.items():
-            if series == 'time':
-                continue
-            P.plot(self.traces['time'], data, label=series)
+            if series in vars:
+                P.plot(self.traces['time'], data, label=series)
         P.legend(loc=0)
         P.grid()
         P.title("{} model".format(self.model_type))
