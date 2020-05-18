@@ -81,8 +81,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Epimodels'
-copyright = u'2018, Flávio Codeço Coelho'
+project = u'epimodels'
+copyright = u'2020, Flávio Codeço Coelho'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
