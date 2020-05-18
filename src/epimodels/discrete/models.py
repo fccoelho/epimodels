@@ -593,7 +593,7 @@ class SEQIAHR(DiscreteModel):
             A[i + 1] = A[i] + p * alpha * E[i] - delta * A[i]
             H[i + 1] = H[i] + phi * delta * I[i] - (rho + mu) * H[i]
             R[i + 1] = R[i] + (1 - phi) * delta * I[i] + rho * H[i] + delta * A[i]
-            C[i + 1] = C[i] + phi * delta * I[i]
-            D[i + 1] = D[i] + mu * H[i]
+            C[i + 1] = C[i] + phi * delta * I[i] + (1 - p) * alpha * E[i]  # Cumulative cases Hospitalizations + I
+            D[i + 1] = D[i] + mu * H[i]  # Cumulative deaths
 
         return {'time': tspan, 'S': S, 'E': E, 'I': I, 'A': A, 'H': H, 'R': R, 'C': C, 'D': D}
