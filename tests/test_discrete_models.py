@@ -130,7 +130,7 @@ def test_SIRS():
 def test_SEQIAHR():
     model = SEQIAHR()
     model([.99, 0, 1e-6, 0, 0, 0, 0, 0], [0, 300], 1, {'chi': .7, 'phi': .01, 'beta': .5,
-                                                    'rho': .05, 'delta': .1, 'alpha': .33, 'mu': .03,
+                                                    'rho': .05, 'delta': .1, 'gamma': .1, 'alpha': .33, 'mu': .03,
                                                     'p': .75, 'q': 50, 'r': 40
                                                     })
     assert len(model.traces) == 9

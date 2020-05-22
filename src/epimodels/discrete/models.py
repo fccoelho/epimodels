@@ -557,7 +557,8 @@ class SEQIAHR(DiscreteModel):
             {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
              'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'})
         self.parameters = OrderedDict({'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
-                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
+                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'gamma': r'$\gamma$',
+                                       'alpha': r'$\alpha$', 'mu': r'$\mu$',
                                        'p': '$p$', 'q': '$q$', 'r': '$r$'
                                        })
         self.model_type = 'SEQIAHR'
@@ -578,7 +579,7 @@ class SEQIAHR(DiscreteModel):
         S[0], E[0], I[0], A[0], H[0], R[0], C[0], D[0] = inits
 
         N = totpop
-        chi, phi, beta, rho, delta, alpha, mu, p, q, r = params.values()
+        chi, phi, beta, rho, delta, gamma, alpha, mu, p, q, r = params.values()
 
         for i in tspan[:-1]:
             # Turns on Quarantine on day q and off on day q+r
@@ -589,10 +590,10 @@ class SEQIAHR(DiscreteModel):
             ##### Epidemiological model (SEQIAHR)
             S[i + 1] = S[i] - Lpos
             E[i + 1] = E[i] + Lpos - alpha * E[i]
-            I[i + 1] = I[i] + (1 - p) * alpha * E[i] - delta * I[i]
-            A[i + 1] = A[i] + p * alpha * E[i] - delta * A[i]
-            H[i + 1] = H[i] + phi * delta * I[i] - (rho + mu) * H[i]
-            R[i + 1] = R[i] + (1 - phi) * delta * I[i] + rho * H[i] + delta * A[i]
+            I[i + 1] = I[i] + (1 - p) * alpha * E[i] - delta * I[i] - phi* I[i]
+            A[i + 1] = A[i] + p * alpha * E[i] - gamma * A[i]
+            H[i + 1] = H[i] + phi *  I[i] - (rho + mu) * H[i]
+            R[i + 1] = R[i] + delta * I[i] + rho * H[i] + gamma * A[i]
             C[i + 1] = C[i] + phi * delta * I[i] + (1 - p) * alpha * E[i]  # Cumulative cases Hospitalizations + I
             D[i + 1] = D[i] + mu * H[i]  # Cumulative deaths
 

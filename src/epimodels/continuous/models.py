@@ -60,7 +60,6 @@ class SIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'\beta', 'gamma': r'\gamma'})
         self.model_type = 'SIR'
 
-
     def model(self, t: float, y: list, params: dict) -> list:
         """
         SIR Model.
@@ -151,25 +150,25 @@ class SEQIAHR(ContinuousModel):
             {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
              'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'})
         self.parameters = OrderedDict({'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
-                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'alpha': r'$\alpha$', 'mu': r'$\mu$',
+                                       'rho': r'$\rho$', 'delta': r'$\delta$', 'gamma': r'$\gamma$',
+                                       'alpha': r'$\alpha$', 'mu': r'$\mu$',
                                        'p': '$p$', 'q': '$q$', 'r': '$r$'
                                        })
         self.model_type = 'SEQIAHR'
 
     def model(self, t: float, y: list, params: dict) -> list:
         S, E, I, A, H, R, C, D = y
-        chi, phi, beta, rho, delta, alpha, mu, p, q, r, N = params.values()
+        chi, phi, beta, rho, delta, gamma, alpha, mu, p, q, r, N = params.values()
         lamb = beta * (I + A)
         # Turns on Quarantine on day q and off on day q+r
         chi *= ((1 + np.tanh(t - q)) / 2) * ((1 - np.tanh(t - (q + r))) / 2)
         return [
             -lamb * ((1 - chi) * S),  # dS/dt
             lamb * ((1 - chi) * S) - alpha * E,  # dE/dt
-            (1 - p) * alpha * E - delta * I,  # dI/dt
-            p * alpha * E - delta * A,
-            phi * delta * I - (rho + mu) * H,  # dH/dt
-            (1 - phi) * delta * I + rho * H + delta * A,  # dR/dt
+            (1 - p) * alpha * E - delta * I - phi * I,  # dI/dt
+            p * alpha * E - gamma * A,
+            phi * I - (rho + mu) * H,  # dH/dt
+            delta * I + rho * H + gamma * A,  # dR/dt
             phi * delta * I,  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
-            mu*H  # Morte acumuladas
+            mu * H  # Morte acumuladas
         ]
-
