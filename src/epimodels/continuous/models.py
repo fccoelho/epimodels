@@ -169,6 +169,6 @@ class SEQIAHR(ContinuousModel):
             p * alpha * E - gamma * A,
             phi * I - (rho + mu) * H,  # dH/dt
             delta * I + rho * H + gamma * A,  # dR/dt
-            phi * delta * I,  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
+            phi * I,  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
             mu * H  # Morte acumuladas
         ]
