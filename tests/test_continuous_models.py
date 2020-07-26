@@ -16,6 +16,13 @@ def test_SIR():
     model.plot_traces()
     P.show()
 
+def test_SIR_with_t_eval():
+    model = SIR()
+    model([1000, 1, 0], [0, 500], 1001, {'beta': .2, 'gamma': .1}, t_eval=range(0, 500))
+    assert len(model.traces['S']) == 500
+    # assert len(model.traces['time']) == 50
+
+
 
 def test_SIS():
     model = SIS()
