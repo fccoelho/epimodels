@@ -12,10 +12,12 @@ finally:
 
 from matplotlib import pyplot as P
 
+
 class BaseModel:
     """
     Base class for all models both discrete and continuous
     """
+
     def __init__(self):
         self.name = None
         self.model_type = None
@@ -23,15 +25,17 @@ class BaseModel:
         self.parameters = {}
         self.traces = {}
 
-    def plot_traces(self, vars: list=[]):
+    def plot_traces(self, vars: list = []):
         """
         Plots the simulations
         :param vars: variables to plot
         """
+        if vars == []:  # Plot all
+            vars = [s for s in self.traces if s != 'time']
+
         for series, data in self.traces.items():
             if series in vars:
                 P.plot(self.traces['time'], data, label=series)
         P.legend(loc=0)
         P.grid()
         P.title("{} model".format(self.model_type))
-
