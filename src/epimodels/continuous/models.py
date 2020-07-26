@@ -49,7 +49,7 @@ class ContinuousModel(BaseModel):
     def run(self, inits, trange, totpop, params, **kwargs):
         # model = model_types[self.model_type]['function']
         params['N'] = totpop
-        sol = solve_ivp(lambda t, y: self.model(t, y, params), trange, inits, self.method, **self.kwargs)
+        sol = solve_ivp(lambda t, y: self.model(t, y, params), trange, inits, self.method, **kwargs)
         return sol
 
 
