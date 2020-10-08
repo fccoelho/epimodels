@@ -39,7 +39,7 @@ class ContinuousModel(BaseModel):
         res['time'] = sol.t
         self.traces.update(res)
 
-    def model(self, t: float, y: list, params: list):
+    def _model(self, t: float, y: list, params: list):
         raise NotImplementedError
 
     @property
@@ -49,7 +49,7 @@ class ContinuousModel(BaseModel):
     def run(self, inits, trange, totpop, params, **kwargs):
         # model = model_types[self.model_type]['function']
         params['N'] = totpop
-        sol = solve_ivp(lambda t, y: self.model(t, y, params), trange, inits, self.method, **kwargs)
+        sol = solve_ivp(lambda t, y: self._model(t, y, params), trange, inits, self.method, **kwargs)
         return sol
 
 
@@ -57,10 +57,10 @@ class SIR(ContinuousModel):
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict({'S': 'Susceptible', 'I': 'Infectious', 'R': 'Removed'})
-        self.parameters = OrderedDict({'beta': r'\beta', 'gamma': r'\gamma'})
+        self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$'})
         self.model_type = 'SIR'
 
-    def model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: list, params: dict) -> list:
         """
         SIR Model.
         :param t:
@@ -85,7 +85,7 @@ class SIS(ContinuousModel):
         self.model_type = 'SIS'
 
     # @lru_cache(1000)
-    def model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: list, params: dict) -> list:
         """
         SIS Model.
         :param t:
@@ -108,7 +108,7 @@ class SIRS(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$', 'xi': r'$\xi$'})
         self.model_type = 'SIRS'
 
-    def model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: list, params: dict) -> list:
         """
         SIR Model.
         :param t:
@@ -132,7 +132,7 @@ class SEIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$', 'epsilon': r'$\epsilon$'})
         self.model_type = 'SEIR'
 
-    def model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: list, params: dict) -> list:
         S, E, I, R = y
         beta, gamma, epsilon, N = params['beta'], params['gamma'], params['epsilon'], params['N']
         return [
@@ -149,14 +149,14 @@ class SEQIAHR(ContinuousModel):
         self.state_variables = OrderedDict(
             {'S': 'Susceptible', 'E': 'Exposed', 'I': 'Infectious', 'A': 'Asymptomatic', 'H': 'Hospitalized',
              'R': 'Removed', 'C': 'Cumulative hospitalizations', 'D': 'Cumulative deaths'})
-        self.parameters = OrderedDict({'chi': r'$\chi', 'phi': r'$\phi$', 'beta': r'$\beta$',
+        self.parameters = OrderedDict({'chi': r'$\chi$', 'phi': r'$\phi$', 'beta': r'$\beta$',
                                        'rho': r'$\rho$', 'delta': r'$\delta$', 'gamma': r'$\gamma$',
                                        'alpha': r'$\alpha$', 'mu': r'$\mu$',
                                        'p': '$p$', 'q': '$q$', 'r': '$r$'
                                        })
         self.model_type = 'SEQIAHR'
 
-    def model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: list, params: dict) -> list:
         S, E, I, A, H, R, C, D = y
         chi, phi, beta, rho, delta, gamma, alpha, mu, p, q, r, N = params.values()
         lamb = beta * (I + A)
