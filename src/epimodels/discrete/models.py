@@ -8,12 +8,15 @@ License: GPL-v3
 __author__ = 'fccoelho'
 
 import numpy as np
-from scipy.stats.distributions import poisson, nbinom
-from numpy import inf, nan, nan_to_num
-import sys
-import logging
+# from scipy.stats.distributions import poisson, nbinom
+# from numpy import inf, nan, nan_to_num
+# import sys
+# import logging
 from collections import OrderedDict
-import cython
+# import cython
+from typing import Dict, List, Iterable, Any
+# import numba
+# from numba.experimental import jitclass
 from epimodels import BaseModel
 
 model_types = {
@@ -76,7 +79,6 @@ class DiscreteModel(BaseModel):
         raise NotImplementedError
 
     def __call__(self, *args, **kwargs):
-        # args = self.get_args_from_redis()
         res = self.run(*args)
         self.traces.update(res)
         # return res
@@ -511,7 +513,15 @@ class SEIpR(DiscreteModel):
 
         return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
 
-
+# from numba.types import unicode_type, pyobject
+# spec = [
+#     ('model_type', unicode_type),
+#     ('state_variables', pyobject),
+#     ('parameters', pyobject),
+#     ('run', pyobject)
+# ]
+#
+# @jitclass(spec)
 class SIRS(DiscreteModel):
     def __init__(self):
         super().__init__()
@@ -520,11 +530,16 @@ class SIRS(DiscreteModel):
         self.parameters = {'beta': r'$\beta$', 'b': 'b', 'w': 'w'}
         self.run = self.model
 
-    def model(self, inits, trange, totpop, params):
+
+    # @numba.jit
+    def model(self, inits: List, trange: List, totpop: int, params: Dict) -> Dict:
         """
         calculates the model SIRS, and return its values (no demographics)
-        - inits = (E,I,S)
-        - theta = infectious individuals from neighbor sites
+        :param inits: (E,I,S)
+        :param trange:
+        :param totpop:
+        :param params:
+        :return:
         """
         S: np.ndarray = np.zeros(trange[1] - trange[0])
         I: np.ndarray = np.zeros(trange[1] - trange[0])
@@ -565,7 +580,7 @@ class SEQIAHR(DiscreteModel):
 
         self.run = self.model
 
-    def model(self, inits, trange, totpop, params) -> list:
+    def model(self, inits, trange, totpop, params) -> dict:
         S: np.ndarray = np.zeros(trange[1] - trange[0])
         E: np.ndarray = np.zeros(trange[1] - trange[0])
         I: np.ndarray = np.zeros(trange[1] - trange[0])
