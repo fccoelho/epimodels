@@ -12,31 +12,31 @@ Created on 29/11/18
 by fccoelho
 license: GPL V3 or Later
 """
-import numpy
-from pyitlib import discrete_random_variable as drv
-import pylab as P
-
-class TimeDelayEmbedding:
-    def __init__(self, traces):
-        self.traces = traces
-
-    def mutual_information(self, data, tau_max=100):
-        mis = []
-
-        for tau in range(1, tau_max):
-            unlagged = data[:-tau]
-            lagged = numpy.roll(data, -tau)[:-tau]
-            joint = numpy.hstack((unlagged, lagged))
-            mis.append(drv.information_multi(joint))
-            if len(mis) > 1 and mis[-2] < mis[-1]:  # return first local minima
-                tau -= 1
-        return tau, mis
-
-    def _find_embedding_dimension(self, x, tau):
-        d = 2
-        while true:
-            ai = max([])
-
-    def show_mutual_information(self, mis):
-        P.plot(mis)
-        P.show()
+# import numpy
+# # from pyitlib import discrete_random_variable as drv
+# import pylab as P
+#
+# class TimeDelayEmbedding:
+#     def __init__(self, traces):
+#         self.traces = traces
+#
+#     def mutual_information(self, data, tau_max=100):
+#         mis = []
+#
+#         for tau in range(1, tau_max):
+#             unlagged = data[:-tau]
+#             lagged = numpy.roll(data, -tau)[:-tau]
+#             joint = numpy.hstack((unlagged, lagged))
+#             mis.append(drv.information_multi(joint))
+#             if len(mis) > 1 and mis[-2] < mis[-1]:  # return first local minima
+#                 tau -= 1
+#         return tau, mis
+#
+#     def _find_embedding_dimension(self, x, tau):
+#         d = 2
+#         while True:
+#             ai = max([])
+#
+#     def show_mutual_information(self, mis):
+#         P.plot(mis)
+#         P.show()
