@@ -26,9 +26,9 @@ about:
   license_family: MIT
   license_file: 
   summary: "Library of mathematical epidemic models for use in simulation studies and inference"
-  doc_url: 
-  dev_url: 
+  doc_url: ""
+  dev_url: "https://github.com/fccoelho/epimodels"
 
 extra:
   recipe-maintainers:
-    - your-github-id-here
+    - fccoelho
