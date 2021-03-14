@@ -1,5 +1,5 @@
 {% set name = "epimodels" %}
-{% set version = "0.3.16" %}
+{% set version = "0.3.19" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: 51f04576274fd3202a4bb1f4b1fd5e9eb26ba3bf3b68dca929888f801a454fb0
+  sha256: 8dec0de96e6ec506e3c61b7af6d687791c6db0eb5f74a90538f2844505db60e8
 
 build:
   number: 0
@@ -26,9 +26,9 @@ about:
   license_family: MIT
   license_file: 
   summary: "Library of mathematical epidemic models for use in simulation studies and inference"
-  doc_url: ""
-  dev_url: "https://github.com/fccoelho/epimodels"
+  doc_url: 
+  dev_url: 
 
 extra:
   recipe-maintainers:
-    - fccoelho
+    - your-github-id-here
