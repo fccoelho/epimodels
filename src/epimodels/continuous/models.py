@@ -33,6 +33,15 @@ class ContinuousModel(BaseModel):
         #     logging.Error('Invalid model type: {}'.format(model_type))
 
     def __call__(self, inits: list, trange: list, totpop: float, params: dict, method: str = 'RK45', **kwargs):
+        """
+        Run the model
+        :param inits: initial contitions
+        :param trange: time range: [t0, tf]
+        :param totpop: total population size
+        :param params: dictionary of parameters
+        :param method: integration method. default is 'RK45'
+        :param kwargs: Additional parameters passed on to solve_ivp
+        """
         self.method = method
         self.kwargs = kwargs
         sol = self.run(inits, trange, totpop, params, **kwargs)
@@ -60,6 +69,7 @@ class SIR(ContinuousModel):
         self.state_variables = OrderedDict({'S': 'Susceptible', 'I': 'Infectious', 'R': 'Removed'})
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$'})
         self.model_type = 'SIR'
+
     @numba.jit
     def _model(self, t: float, y: list, params: dict) -> list:
         """
@@ -75,6 +85,28 @@ class SIR(ContinuousModel):
             -beta * S * I / N,
             beta * S * I / N - gamma * I,
             gamma * I
+        ]
+
+
+class SIR1D(ContinuousModel):
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict({'R': 'Recovered'})
+        self.parameters = {'R0': r'{\cal R}_0', 'gamma': r'\gamma', 'S0': r'S_0'}
+        self.model_type = 'SIR1D'
+
+    def _model(self, t: float, y: list, params: dict) -> list:
+        """
+        One dimensional SIR model
+        :param t:
+        :param y:
+        :param params:
+        """
+        N = params['N']
+        R = y
+        R0, gamma, S0 = params['R0'], params['gamma'], params['S0']
+        return [
+            gamma * (N - R - (S0 * np.exp(-R0 * R)))
         ]
 
 

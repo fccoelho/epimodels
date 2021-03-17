@@ -22,6 +22,14 @@ def test_SIR_with_t_eval():
     assert len(model.traces['S']) == 500
     # assert len(model.traces['time']) == 50
 
+def test_SIR1D():
+    model = SIR1D()
+    model([0], [0, 500], 100, {'R0': 1.5, 'gamma': .1, 'S0': 98})
+    # assert len(model.traces['R']) == 500
+    assert len(model.traces) == 2
+    model.plot_traces()
+    P.show()
+
 def test_SIS():
     model = SIS()
     model([1000, 1], [0, 50], 1001, {'beta': 2, 'gamma': .1})
