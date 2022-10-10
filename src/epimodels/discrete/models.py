@@ -15,8 +15,6 @@ import numpy as np
 from collections import OrderedDict
 # import cython
 from typing import Dict, List, Iterable, Any
-# import numba
-# from numba.experimental import jitclass
 from epimodels import BaseModel
 
 model_types = {

@@ -9,7 +9,6 @@ from epimodels import BaseModel
 import logging
 from collections import OrderedDict
 from functools import lru_cache
-import numba
 
 logging.basicConfig(filename='epimodels.log', filemode='w', level=logging.DEBUG)
 
@@ -70,7 +69,6 @@ class SIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$'})
         self.model_type = 'SIR'
 
-    @numba.jit
     def _model(self, t: float, y: list, params: dict) -> list:
         """
         SIR Model.
@@ -118,7 +116,7 @@ class SIS(ContinuousModel):
         self.model_type = 'SIS'
 
     # @lru_cache(1000)
-    @numba.jit
+
     def _model(self, t: float, y: list, params: dict) -> list:
         """
         SIS Model.
@@ -142,7 +140,7 @@ class SIRS(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$', 'xi': r'$\xi$'})
         self.model_type = 'SIRS'
 
-    @numba.jit
+
     def _model(self, t: float, y: list, params: dict) -> list:
         """
         SIR Model.
@@ -167,7 +165,7 @@ class SEIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$', 'epsilon': r'$\epsilon$'})
         self.model_type = 'SEIR'
 
-    @numba.jit
+
     def _model(self, t: float, y: list, params: dict) -> list:
         S, E, I, R = y
         beta, gamma, epsilon, N = params['beta'], params['gamma'], params['epsilon'], params['N']
@@ -192,7 +190,7 @@ class SEQIAHR(ContinuousModel):
                                        })
         self.model_type = 'SEQIAHR'
 
-    @numba.jit
+
     def _model(self, t: float, y: list, params: dict) -> list:
         S, E, I, A, H, R, C, D = y
         chi, phi, beta, rho, delta, gamma, alpha, mu, p, q, r, N = params.values()

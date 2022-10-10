@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "epimodels"
+description= "Library of mathematical epidemic models for use in simulation studies and inference"
+authors= ["Flávio Codeço Coelho"]
+version = "0.0.0"
+homepage = "https://github.com/fccoelho/epimodels"
+
+[tool.poetry.dependencies]
+python = "*"
+cython = "*"
+numpy = "*"
+pytest = {optional = true, version = "*"}
+pytest-cov = {optional = true, version = "*"}
+scipy = "*"
+matplotlib = "*"
+mypy = "*"
+pyitlib = "*"
+sphinx = "*"
+sympy = "*"
