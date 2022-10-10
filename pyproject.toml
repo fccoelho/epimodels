@@ -2,18 +2,22 @@
 name = "epimodels"
 description= "Library of mathematical epidemic models for use in simulation studies and inference"
 authors= ["Flávio Codeço Coelho"]
-version = "0.0.0"
+version = "0.3.21"
 homepage = "https://github.com/fccoelho/epimodels"
 
 [tool.poetry.dependencies]
-python = "*"
-cython = "*"
-numpy = "*"
-pytest = {optional = true, version = "*"}
-pytest-cov = {optional = true, version = "*"}
-scipy = "*"
-matplotlib = "*"
-mypy = "*"
+python = "^3.9"
+cython = "0.29.32"
+numpy = "^1.23.3"
+scipy = "^1.9.2"
+matplotlib = "^3.6.1"
+mypy = "==0.982"
 pyitlib = "*"
 sphinx = "*"
-sympy = "*"
+sympy = "^1.11.1"
+
+[tool.poetry.dev-dependencies]
+pytest = {optional = true, version = "*"}
+pytest-cov = {optional = true, version = "*"}
+nox-poetry = "^1.0.1"
+autoflake8 = "^0.4.0"
