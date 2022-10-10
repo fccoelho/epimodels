@@ -43,6 +43,7 @@ class ContinuousModel(BaseModel):
         """
         self.method = method
         self.kwargs = kwargs
+        self.param_values = OrderedDict(zip(self.parameters.keys(), params.values()))
         sol = self.run(inits, trange, totpop, params, **kwargs)
         res = {v: sol.y[s, :] for v, s in zip(self.state_variables.keys(), range(sol.y.shape[0]))}
         res['time'] = sol.t

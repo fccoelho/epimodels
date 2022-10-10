@@ -58,7 +58,7 @@ model_types = {
                        'p': '$p$', 'q': '$q$', 'r': '$r$'
                        }
 
-        }
+    }
 }
 
 
@@ -76,8 +76,9 @@ class DiscreteModel(BaseModel):
     def run(self, *args):
         raise NotImplementedError
 
-    def __call__(self, *args, **kwargs):
-        res = self.run(*args)
+    def __call__(self, inits: list, trange: list, totpop: int, params: dict, **kwargs):
+        self.param_values = OrderedDict(zip(self.parameters.keys(), params.values()))
+        res = self.run(inits, trange, totpop, params)
         self.traces.update(res)
         # return res
 
@@ -511,6 +512,7 @@ class SEIpR(DiscreteModel):
 
         return {'time': tspan, 'S': S, 'I': I, 'E': E, 'R': R}
 
+
 # from numba.types import unicode_type, pyobject
 # spec = [
 #     ('model_type', unicode_type),
@@ -527,7 +529,6 @@ class SIRS(DiscreteModel):
         self.state_variables = {'R': 'Removed', 'I': 'Infectious', 'S': 'Susceptible'}
         self.parameters = {'beta': r'$\beta$', 'b': 'b', 'w': 'w'}
         self.run = self.model
-
 
     # @numba.jit
     def model(self, inits: List, trange: List, totpop: int, params: Dict) -> Dict:
@@ -603,9 +604,9 @@ class SEQIAHR(DiscreteModel):
             ##### Epidemiological model (SEQIAHR)
             S[i + 1] = S[i] - Lpos
             E[i + 1] = E[i] + Lpos - alpha * E[i]
-            I[i + 1] = I[i] + (1 - p) * alpha * E[i] - delta * I[i] - phi* I[i]
+            I[i + 1] = I[i] + (1 - p) * alpha * E[i] - delta * I[i] - phi * I[i]
             A[i + 1] = A[i] + p * alpha * E[i] - gamma * A[i]
-            H[i + 1] = H[i] + phi *  I[i] - (rho + mu) * H[i]
+            H[i + 1] = H[i] + phi * I[i] - (rho + mu) * H[i]
             R[i + 1] = R[i] + delta * I[i] + rho * H[i] + gamma * A[i]
             C[i + 1] = C[i] + phi * delta * I[i] + (1 - p) * alpha * E[i]  # Cumulative cases Hospitalizations + I
             D[i + 1] = D[i] + mu * H[i]  # Cumulative deaths
