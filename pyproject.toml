@@ -2,7 +2,7 @@
 name = "epimodels"
 description= "Library of mathematical epidemic models for use in simulation studies and inference"
 authors= ["Flávio Codeço Coelho"]
-version = "0.3.21"
+version = "0.4.0"
 homepage = "https://github.com/fccoelho/epimodels"
 
 [tool.poetry.dependencies]
@@ -21,3 +21,8 @@ pytest = {optional = true, version = "*"}
 pytest-cov = {optional = true, version = "*"}
 nox-poetry = "^1.0.1"
 autoflake8 = "^0.4.0"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]

@@ -3,7 +3,6 @@ __author__ = 'fccoelho'
 import unittest
 import pytest
 from matplotlib import pyplot as P
-# import pyximport; pyximport.install(pyimport=True)
 
 from epimodels.continuous.models import *
 
