@@ -6,21 +6,26 @@ version = "0.4.0"
 homepage = "https://github.com/fccoelho/epimodels"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-cython = "0.29.32"
-numpy = "^1.23.3"
+python = "^3.9,<3.11"
+cython = "*"
+numpy = "*"
 scipy = "^1.9.2"
 matplotlib = "^3.6.1"
-mypy = "==0.982"
+mypy = "^0.982"
 pyitlib = "*"
 sphinx = "*"
 sympy = "^1.11.1"
+latexify-py = "0.2.0b2"
 
 [tool.poetry.dev-dependencies]
 pytest = {optional = true, version = "*"}
 pytest-cov = {optional = true, version = "*"}
 nox-poetry = "^1.0.1"
 autoflake8 = "^0.4.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+pytest-cov = "^4.0.0"
 
 [tool.pytest.ini_options]
 pythonpath = [

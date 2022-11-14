@@ -9,6 +9,8 @@ from epimodels import BaseModel
 import logging
 from collections import OrderedDict
 from functools import lru_cache
+import latexify
+import copy
 
 logging.basicConfig(filename='epimodels.log', filemode='w', level=logging.DEBUG)
 
@@ -52,6 +54,11 @@ class ContinuousModel(BaseModel):
     def _model(self, t: float, y: list, params: list):
         raise NotImplementedError
 
+    def __repr__(self):
+        f = copy.deepcopy(self._model)
+        # f.__doc__ = ''
+        return latexify.get_latex(f, use_math_symbols=True)
+
     @property
     def dimension(self) -> int:
         return len(self.state_variables)
@@ -64,6 +71,9 @@ class ContinuousModel(BaseModel):
 
 
 class SIR(ContinuousModel):
+    '''
+    SIR Model
+    '''
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict({'S': 'Susceptible', 'I': 'Infectious', 'R': 'Removed'})
@@ -71,13 +81,6 @@ class SIR(ContinuousModel):
         self.model_type = 'SIR'
 
     def _model(self, t: float, y: list, params: dict) -> list:
-        """
-        SIR Model.
-        :param t: time step
-        :param y: state of the model at time t
-        :param params: parameter dictionary
-        :return:
-        """
         S, I, R = y
         beta, gamma, N = params['beta'], params['gamma'], params['N']
         return [
