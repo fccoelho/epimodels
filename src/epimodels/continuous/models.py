@@ -56,8 +56,7 @@ class ContinuousModel(BaseModel):
 
     def __repr__(self):
         f = copy.deepcopy(self._model)
-        # f.__doc__ = ''
-        return latexify.get_latex(f, use_math_symbols=True)
+        return latexify.get_latex(f, use_math_symbols=True,identifiers={'_model': self.model_type})
 
     @property
     def dimension(self) -> int:
@@ -91,6 +90,9 @@ class SIR(ContinuousModel):
 
 
 class SIR1D(ContinuousModel):
+    """
+        One dimensional SIR model
+    """
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict({'R': 'Recovered'})
@@ -98,12 +100,7 @@ class SIR1D(ContinuousModel):
         self.model_type = 'SIR1D'
 
     def _model(self, t: float, y: list, params: dict) -> list:
-        """
-        One dimensional SIR model
-        :param t:
-        :param y:
-        :param params:
-        """
+
         N = params['N']
         R = y
         R0, gamma, S0 = params['R0'], params['gamma'], params['S0']
@@ -113,6 +110,9 @@ class SIR1D(ContinuousModel):
 
 
 class SIS(ContinuousModel):
+    '''
+    SIS Model.
+    '''
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict({'S': 'Susceptible', 'I': 'Infectious'})
@@ -122,13 +122,6 @@ class SIS(ContinuousModel):
     # @lru_cache(1000)
 
     def _model(self, t: float, y: list, params: dict) -> list:
-        """
-        SIS Model.
-        :param t:
-        :param y:
-        :param params:
-        :return:
-        """
         S, I = y
         beta, gamma, N = params['beta'], params['gamma'], params['N']
         return [
@@ -138,6 +131,9 @@ class SIS(ContinuousModel):
 
 
 class SIRS(ContinuousModel):
+    '''
+    SIRS Model
+    '''
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict({'S': 'Susceptible', 'I': 'Infectious', 'R': 'Removed'})
@@ -146,13 +142,6 @@ class SIRS(ContinuousModel):
 
 
     def _model(self, t: float, y: list, params: dict) -> list:
-        """
-        SIR Model.
-        :param t:
-        :param y:
-        :param params:
-        :return:
-        """
         S, I, R = y
         beta, gamma, xi, N = params['beta'], params['gamma'], params['xi'], params['N']
         return [
