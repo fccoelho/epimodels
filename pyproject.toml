@@ -24,10 +24,12 @@ dependencies = [
     "sphinx>=8.1.3",
     "sympy>=1.13.3",
 ]
+packages = ["epimodels"]
+
 [project.urls]
 Homepage = "https://github.com/fccoelho/epimodels"
 Documentation = "https://epimodels.readthedocs.io"
-#packages = [{ include = "epimodels" }]
+
 
 [tool.uv]
 dev-dependencies = [

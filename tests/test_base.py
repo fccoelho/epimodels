@@ -1,4 +1,6 @@
 import unittest
+import sys
+sys.path.append('..')
 from epimodels.continuous import models as cm
 from epimodels.discrete import models as dm
 

@@ -1,9 +1,10 @@
 __author__ = 'fccoelho'
 
-import pytest
 # import pyximport; pyximport.install(pyimport=True)
-from epimodels.discrete.models import (DiscreteModel, Influenza, SIS, SIR, SEIS, SEIR,
-                                       SIpRpS, SEIpRpS, SIpR, SEIpR, SIRS, SEQIAHR)
+import sys
+sys.path.append('..')
+from epimodels.discrete import (DiscreteModel, Influenza, SIS, SIR, SEIS, SEIR,
+                                SIpRpS, SEIpRpS, SIpR, SEIpR, SIRS, SEQIAHR)
 from matplotlib import pyplot as P
 
 
@@ -13,7 +14,7 @@ def test_SIS():
     assert len(modelsis.traces) == 3
     assert len(modelsis.traces['time']) == 50
     modelsis.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelsis, DiscreteModel)
 
 
@@ -23,7 +24,7 @@ def test_SIR():
     assert len(modelsir.traces) == 4
     assert len(modelsir.traces['time']) == 500
     modelsir.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelsir, DiscreteModel)
 
 
@@ -52,7 +53,7 @@ def test_FLU():
     assert len(modelflu.traces['time']) == 50
     print(list(modelflu.traces.keys()))
     modelflu.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelflu, DiscreteModel)
 
 
@@ -62,7 +63,7 @@ def test_SEIS():
     assert len(modelseis.traces) == 4
     assert len(modelseis.traces['time']) == 50
     modelseis.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelseis, DiscreteModel)
 
 
@@ -73,7 +74,7 @@ def test_SEIR():
     assert len(modelseir.traces) == 5
     assert len(modelseir.traces['time']) == tsteps[1]
     modelseir.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelseir, DiscreteModel)
 
 
@@ -84,7 +85,7 @@ def test_SIpRpS():
     assert len(modelsiprps.traces) == 4
     assert len(modelsiprps.traces['time']) == tsteps[1]
     modelsiprps.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelsiprps, DiscreteModel)
 
 
@@ -95,7 +96,7 @@ def test_SEIpRpS():
     assert len(modelseiprps.traces) == 5
     assert len(modelseiprps.traces['time']) == tsteps[1]
     modelseiprps.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelseiprps, DiscreteModel)
 
 
@@ -105,7 +106,7 @@ def test_SIpR():
     assert len(modelsipr.traces) == 4
     assert len(modelsipr.traces['time']) == 50
     modelsipr.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelsipr, DiscreteModel)
 
 def test_SEIpR():
@@ -115,7 +116,7 @@ def test_SEIpR():
     assert len(modelseipr.traces) == 5
     assert len(modelseipr.traces['time']) == tsteps[1]
     modelseipr.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelseipr, DiscreteModel)
 
 def test_SIRS():
@@ -124,7 +125,7 @@ def test_SIRS():
     assert len(modelsirs.traces) == 4
     assert len(modelsirs.traces['time']) == 50
     modelsirs.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(modelsirs, DiscreteModel)
 
 def test_SEQIAHR():
@@ -135,5 +136,5 @@ def test_SEQIAHR():
                                                     })
     assert len(model.traces) == 9
     model.plot_traces()
-    P.show()
+    # P.show()
     assert isinstance(model, DiscreteModel)

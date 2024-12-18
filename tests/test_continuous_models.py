@@ -1,10 +1,8 @@
 __author__ = 'fccoelho'
-
-import unittest
-import pytest
+import sys
+sys.path.append('..')
 from matplotlib import pyplot as P
-
-from epimodels.continuous.models import *
+from epimodels.continuous import (SIS, SIR, SIR1D, SIRS, SEIR, SEQIAHR)
 
 
 def test_SIR():
@@ -13,7 +11,7 @@ def test_SIR():
     assert len(model.traces) == 4
     # assert len(model.traces['time']) == 50
     model.plot_traces()
-    P.show()
+    # P.show()
 
 def test_SIR_with_t_eval():
     model = SIR()
@@ -27,7 +25,7 @@ def test_SIR1D():
     # assert len(model.traces['R']) == 500
     assert len(model.traces) == 2
     model.plot_traces()
-    P.show()
+    # P.show()
 
 def test_SIS():
     model = SIS()
@@ -35,7 +33,7 @@ def test_SIS():
     assert len(model.traces) == 3
     # assert len(model.traces['time']) == 50
     model.plot_traces()
-    P.show()
+    # P.show()
 
 
 def test_SIRS():
@@ -44,7 +42,7 @@ def test_SIRS():
     assert len(model.traces) == 4
     # assert len(model.traces['time']) == 50
     model.plot_traces()
-    P.show()
+    # P.show()
 
 
 def test_SEIR():
@@ -54,7 +52,7 @@ def test_SEIR():
     assert len(model.traces) == 5  # state variables plus time
     # assert len(model.traces['time']) == 50
     model.plot_traces()
-    P.show()
+    # P.show()
 
 
 def test_SEQIAHR():
@@ -68,7 +66,7 @@ def test_SEQIAHR():
     assert len(model.traces) == 9  # state variables plus time
     # assert len(model.traces['time']) == 50
     model.plot_traces()
-    P.show()
+    # P.show()
 
 # def test_SIS_with_cache():
 #     model = SIS()
