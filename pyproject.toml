@@ -1,6 +1,6 @@
 [project]
 name = "epimodels"
-version = "0.4.1"
+version = "0.4.2"
 description = "Library of mathematical epidemic models for use in simulation studies and inference."
 authors = [
     {name="Flávio Codeço Coelho",  email = "fccoelho@gmail.com"}
@@ -24,7 +24,7 @@ dependencies = [
     "sphinx>=8.1.3",
     "sympy>=1.13.3",
 ]
-packages = ["epimodels"]
+#packages = ["epimodels"]
 
 [project.urls]
 Homepage = "https://github.com/fccoelho/epimodels"
@@ -32,8 +32,11 @@ Documentation = "https://epimodels.readthedocs.io"
 
 
 [tool.uv]
+
+package = ["epimodels"]
 dev-dependencies = [
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
     "ruff>=0.8.3",
 ]
+
