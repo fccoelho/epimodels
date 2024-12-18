@@ -33,7 +33,6 @@ Documentation = "https://epimodels.readthedocs.io"
 
 [tool.uv]
 
-package = ["epimodels"]
 dev-dependencies = [
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
