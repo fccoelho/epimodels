@@ -1,6 +1,6 @@
 [project]
 name = "epimodels"
-version = "0.4.0"
+version = "0.4.1"
 description = "Library of mathematical epidemic models for use in simulation studies and inference."
 authors = [
     {name="Flávio Codeço Coelho",  email = "fccoelho@gmail.com"}
