@@ -13,4 +13,4 @@ pytest-cov
 matplotlib
 mypy
 sphinx
-pyitlib
+latexify-py
