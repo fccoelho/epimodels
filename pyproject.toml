@@ -30,6 +30,8 @@ dependencies = [
 Homepage = "https://github.com/fccoelho/epimodels"
 Documentation = "https://epimodels.readthedocs.io"
 
+[tool.setuptools]
+packages = ["epimodels"]
 
 [tool.uv]
 dev-dependencies = [
