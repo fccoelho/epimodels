@@ -19,6 +19,7 @@ dependencies = [
     "latexify-py>=0.4.3.post1",
     "matplotlib>=3.10.0",
     "mypy>=1.13.0",
+    "notebook>=7.4.2",
     "numpy>=2.2.0",
     "scipy>=1.14.1",
     "sphinx>=8.1.3",
@@ -35,6 +36,7 @@ packages = ["epimodels"]
 
 [tool.uv]
 dev-dependencies = [
+    "nbsphinx>=0.9.6",
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
     "ruff>=0.8.3",

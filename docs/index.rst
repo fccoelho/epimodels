@@ -16,8 +16,11 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents:
 
    Getting Started <geting_started>
+   Examples/Continuous_models
+   Examples/Discrete_models
    License <license>
    Authors <authors>
    Changelog <changelog>

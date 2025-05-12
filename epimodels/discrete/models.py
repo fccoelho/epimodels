@@ -12,10 +12,13 @@ import numpy as np
 # from numpy import inf, nan, nan_to_num
 # import sys
 # import logging
+import copy
+import latexify
 from collections import OrderedDict
 # import cython
 from typing import Dict, List, Iterable, Any
 from epimodels import BaseModel
+
 
 model_types = {
     'SIR': {'variables': {'R': 'Removed', 'I': 'Infectious', 'S': 'Susceptible'},
@@ -81,6 +84,16 @@ class DiscreteModel(BaseModel):
         res = self.run(inits, trange, totpop, params)
         self.traces.update(res)
         # return res
+    def __repr__(self):
+        f = copy.deepcopy(self.model)
+        desc = f"""
+        # Model: {self.model_type}
+         
+        ```mermaid 
+        {self.diagram} 
+        ``` 
+        """
+        return desc
 
 
 class Influenza(DiscreteModel):
@@ -101,6 +114,28 @@ class Influenza(DiscreteModel):
             'pp1': r'pp_1', 'pp2': r'pp_2', 'pp3': r'pp_3', 'pp4': r'pp_4', 'b': 'b'
         }
         self.run = self.model
+
+    @property
+    def diagram(self) -> str:
+        return """flowchart LR
+S1(Susc_age1) -->|$\beta$| E1(Incub_age1)
+E1 -->|$\beta$| Is1(Subc_age1)
+Is1 -->|$\beta$| Ic1(Sympt_age1)
+Ic1 -->|$\beta$| Ig1(Comp_age1)
+S2(Susc_age2) -->|$\beta$| E2(Incub_age2)
+E2 -->|$\beta$| Is2(Subc_age2)
+Is2 -->|$\beta$| Ic2(Sympt_age2)
+Ic2 -->|$\beta$| Ig2(Comp_age2)
+S3(Susc_age3) -->|$\beta$| E3(Incub_age3)
+E3 -->|$\beta$| Is3(Subc_age3)
+Is3 -->|$\beta$| Ic3(Sympt_age3)
+Ic3 -->|$\beta$| Ig3(Comp_age3)
+S4(Susc_age4) -->|$\beta$| E4(Incub_age4)
+E4 -->|$\beta$| Is4(Subc_age4)
+Is4 -->|$\beta$| Ic4(Sympt_age4)
+Ic4 -->|$\beta$| Ig4(Comp_age4)
+ 
+         """
 
     def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
@@ -212,6 +247,14 @@ class SIS(DiscreteModel):
         self.state_variables = {"S": 'Susceptible', 'I': 'Infectious'}
         self.parameters = {'beta': r'\beta', 'gamma': r'\gamma'}
         self.run = self.model
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compatmental model"""
+        return """flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|$\gamma$| S
+"""
 
     def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
@@ -405,7 +448,9 @@ class SEIpRpS(DiscreteModel):
         """
         Defines the model SEIpRpS:
         - inits = (E,I,S)
-        - theta = infectious individuals from neighbor sites
+        - trange = (time_start, time_end)
+        - totpop = total population
+        - params = (Beta, alpha, E,r,delta,B,w,p) see docs.
         """
         S: np.ndarray = np.zeros(trange[1] - trange[0])
         E: np.ndarray = np.zeros(trange[1] - trange[0])
