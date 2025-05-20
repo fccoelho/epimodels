@@ -16,7 +16,6 @@ classifiers = [
 requires-python = ">=3.12"
 dependencies = [
     "cython>=3.0.11",
-    "latexify-py>=0.4.3.post1",
     "matplotlib>=3.10.0",
     "mypy>=1.13.0",
     "notebook>=7.4.2",
