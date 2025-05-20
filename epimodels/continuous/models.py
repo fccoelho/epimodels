@@ -9,6 +9,7 @@ from epimodels import BaseModel
 import logging
 from collections import OrderedDict
 from functools import lru_cache
+from typing import List, Dict
 import latexify
 import copy
 
@@ -51,7 +52,7 @@ class ContinuousModel(BaseModel):
         res['time'] = sol.t
         self.traces.update(res)
 
-    def _model(self, t: float, y: list, params: list):
+    def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         raise NotImplementedError
 
     def __repr__(self):
@@ -79,7 +80,7 @@ class SIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$'})
         self.model_type = 'SIR'
 
-    def _model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, I, R = y
         beta, gamma, N = params['beta'], params['gamma'], params['N']
         return [
@@ -99,10 +100,10 @@ class SIR1D(ContinuousModel):
         self.parameters = {'R0': r'{\cal R}_0', 'gamma': r'\gamma', 'S0': r'S_0'}
         self.model_type = 'SIR1D'
 
-    def _model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
 
         N = params['N']
-        R = y
+        R = y[0]
         R0, gamma, S0 = params['R0'], params['gamma'], params['S0']
         return [
             gamma * (N - R - (S0 * np.exp(-R0 * R)))
@@ -121,7 +122,7 @@ class SIS(ContinuousModel):
 
     # @lru_cache(1000)
 
-    def _model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, I = y
         beta, gamma, N = params['beta'], params['gamma'], params['N']
         return [
@@ -141,7 +142,7 @@ class SIRS(ContinuousModel):
         self.model_type = 'SIRS'
 
 
-    def _model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, I, R = y
         beta, gamma, xi, N = params['beta'], params['gamma'], params['xi'], params['N']
         return [
@@ -159,7 +160,7 @@ class SEIR(ContinuousModel):
         self.model_type = 'SEIR'
 
 
-    def _model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, E, I, R = y
         beta, gamma, epsilon, N = params['beta'], params['gamma'], params['epsilon'], params['N']
         return [
@@ -184,7 +185,7 @@ class SEQIAHR(ContinuousModel):
         self.model_type = 'SEQIAHR'
 
 
-    def _model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, E, I, A, H, R, C, D = y
         chi, phi, beta, rho, delta, gamma, alpha, mu, p, q, r, N = params.values()
         lamb = beta * (I + A)

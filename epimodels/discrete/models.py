@@ -77,21 +77,32 @@ class DiscreteModel(BaseModel):
         super().__init__()
 
     def run(self, *args):
-        raise NotImplementedError
+        return self.model(*args)
 
-    def __call__(self, inits: list, trange: list, totpop: int, params: dict, **kwargs):
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return "A[Define a diagram for this model]"
+
+
+    def __call__(self, inits: List[float], trange: List[int], totpop: int, params: dict[str, float], **kwargs)-> None:
         self.param_values = OrderedDict(zip(self.parameters.keys(), params.values()))
         res = self.run(inits, trange, totpop, params)
         self.traces.update(res)
         # return res
+
+    def model(self, inits: List[float], trange: List[int], totpop: int, params: dict[str, float], **kwargs)-> Dict[str, np.ndarray]:
+        """Model definition"""
+        raise NotImplementedError
+
     def __repr__(self):
         f = copy.deepcopy(self.model)
         desc = f"""
         # Model: {self.model_type}
-         
-        ```mermaid 
-        {self.diagram} 
-        ``` 
+
+        ```mermaid
+        {self.diagram}
+        ```
         """
         return desc
 
@@ -113,11 +124,11 @@ class Influenza(DiscreteModel):
             'pc1': r'pc_1', 'pc2': r'pc_2', 'pc3': r'pc_3', 'pc4': r'pc_4',
             'pp1': r'pp_1', 'pp2': r'pp_2', 'pp3': r'pp_3', 'pp4': r'pp_4', 'b': 'b'
         }
-        self.run = self.model
+        # self.run = self.model
 
     @property
     def diagram(self) -> str:
-        return """flowchart LR
+        return r"""flowchart LR
 S1(Susc_age1) -->|$\beta$| E1(Incub_age1)
 E1 -->|$\beta$| Is1(Subc_age1)
 Is1 -->|$\beta$| Ic1(Sympt_age1)
@@ -134,7 +145,7 @@ S4(Susc_age4) -->|$\beta$| E4(Incub_age4)
 E4 -->|$\beta$| Is4(Subc_age4)
 Is4 -->|$\beta$| Ic4(Sympt_age4)
 Ic4 -->|$\beta$| Ig4(Comp_age4)
- 
+
          """
 
     def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
@@ -246,12 +257,12 @@ class SIS(DiscreteModel):
         self.model_type = 'SIS'
         self.state_variables = {"S": 'Susceptible', 'I': 'Infectious'}
         self.parameters = {'beta': r'\beta', 'gamma': r'\gamma'}
-        self.run = self.model
+        # self.run = self.model
 
     @property
     def diagram(self) -> str:
         """Mermaid diagram of the compatmental model"""
-        return """flowchart LR
+        return r"""flowchart LR
 S(Susceptible) -->|$\beta$| I(Infectious)
 I -->|$\gamma$| S
 """
@@ -294,6 +305,14 @@ class SIR(DiscreteModel):
         self.parameters = {'beta': r'\beta', 'gamma': r'\gamma'}
         self.run = self.model
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|$\gamma$| R(Removed)
+"""
+
     def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
         calculates the model SIR, and return its values (no demographics)
@@ -327,6 +346,15 @@ class SEIS(DiscreteModel):
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': 'Exposed'}
         self.parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r'}
         self.run = self.model
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| E(Exposed)
+E -->|e| I(Infectious)
+I -->|r| S
+"""
 
     def model(self, inits, trange, totpop, params):
         """
@@ -365,6 +393,15 @@ class SEIR(DiscreteModel):
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': 'Exposed', 'R': 'Removed'}
         self.parameters = {'b': 'b', 'beta': r'\beta', 'e': 'e', 'r': 'r', 'alpha': r'\alpha'}
         self.run = self.model
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| E(Exposed)
+E -->|e| I(Infectious)
+I -->|r| R(Removed)
+"""
 
     def model(self, inits, trange, totpop, params):
         """
@@ -407,6 +444,15 @@ class SIpRpS(DiscreteModel):
         self.parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
         self.run = self.model
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|r| R(Removed)
+I -->|r*(1-$\delta$)| S
+"""
+
     def model(self, inits, trange, totpop, params):
         """
         calculates the model SIpRpS, and return its values (no demographics)
@@ -443,6 +489,16 @@ class SEIpRpS(DiscreteModel):
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': "Exposed", 'R': 'Removed'}
         self.parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'delta': r'$\delta$'}
         self.run = self.model
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| E(Exposed)
+E -->|e| I(Infectious)
+I -->|r*$\delta$| R(Removed)
+I -->|r*(1-$\delta$)| S
+"""
 
     def model(self, inits, trange, totpop, params):
         """
@@ -486,6 +542,15 @@ class SIpR(DiscreteModel):
         self.parameters = {'b': 'b', 'beta': r'$\beta$', 'r': 'r', 'p': 'p'}
         self.run = self.model
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|r| R(Removed)
+R -->|p*$\beta$| I
+"""
+
     def model(self, inits, trange, totpop, params):
         """
         calculates the model SIpR, and return its values (no demographics)
@@ -523,6 +588,16 @@ class SEIpR(DiscreteModel):
         self.state_variables = {'I': 'Infectious', "S": 'Susceptible', 'E': "Exposed", 'R': 'Removed'}
         self.parameters = {'b': 'b', 'beta': r'$\beta$', 'e': 'e', 'r': 'r', 'alpha': r'$\alpha$', 'p': 'p'}
         self.run = self.model
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| E(Exposed)
+E -->|e| I(Infectious)
+I -->|r| R(Removed)
+R -->|p*$\beta$| E
+"""
 
     def model(self, inits, trange, totpop, params):
         """
@@ -575,6 +650,15 @@ class SIRS(DiscreteModel):
         self.parameters = {'beta': r'$\beta$', 'b': 'b', 'w': 'w'}
         self.run = self.model
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|r| R(Removed)
+R -->|w| S
+"""
+
     # @numba.jit
     def model(self, inits: List, trange: List, totpop: int, params: Dict) -> Dict:
         """
@@ -623,6 +707,20 @@ class SEQIAHR(DiscreteModel):
         self.model_type = 'SEQIAHR'
 
         self.run = self.model
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| E(Exposed)
+E -->|$\alpha$*(1-p)| I(Infectious)
+E -->|$\alpha$*p| A(Asymptomatic)
+I -->|$\phi$| H(Hospitalized)
+I -->|$\delta$| R(Removed)
+A -->|$\gamma$| R
+H -->|$\rho$| R
+H -->|$\mu$| D(Deaths)
+"""
 
     def model(self, inits, trange, totpop, params) -> dict:
         S: np.ndarray = np.zeros(trange[1] - trange[0])
