@@ -57,12 +57,12 @@ class ContinuousModel(BaseModel):
     def __repr__(self):
         f = copy.deepcopy(self._model)
         desc = f"""
-        # Model: {self.model_type}
+# Model: {self.model_type}
 
-        ```mermaid
-        {self.diagram}
-        ```
-        """
+```mermaid
+{self.diagram}
+```
+"""
         return desc
 
     @property
@@ -94,8 +94,9 @@ class SIR(ContinuousModel):
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
         return r"""flowchart LR
-S(Susceptible) -->|$\beta$| I(Infectious)
-I -->|$\gamma$| R(Removed)
+         
+S(Susceptible) -->|$$\beta$$| I(Infectious)
+I -->|$$\gamma$$| R(Removed)
 """
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
@@ -122,8 +123,9 @@ class SIR1D(ContinuousModel):
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
         return r"""flowchart LR
-S(Susceptible) -->|$\beta$| I(Infectious)
-I -->|$\gamma$| R(Recovered)
+         
+S(Susceptible) -->|$$\beta$$| I(Infectious)
+I -->|$$\gamma$$| R(Recovered)
 """
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
@@ -150,8 +152,9 @@ class SIS(ContinuousModel):
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
         return r"""flowchart LR
-S(Susceptible) -->|$\beta$| I(Infectious)
-I -->|$\gamma$| S
+         
+S(Susceptible) -->|$$\beta$$| I(Infectious)
+I -->|$$\gamma$$| S
 """
 
     # @lru_cache(1000)
@@ -178,9 +181,10 @@ class SIRS(ContinuousModel):
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
         return r"""flowchart LR
-S(Susceptible) -->|$\beta$| I(Infectious)
-I -->|$\gamma$| R(Removed)
-R -->|$\xi$| S
+         
+S(Susceptible) -->|$$\beta$$| I(Infectious)
+I -->|$$\gamma$$| R(Removed)
+R -->|$$\xi$$| S
 """
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
@@ -204,9 +208,10 @@ class SEIR(ContinuousModel):
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
         return r"""flowchart LR
-S(Susceptible) -->|$\beta$| E(Exposed)
-E -->|$\epsilon$| I(Infectious)
-I -->|$\gamma$| R(Removed)
+         
+S(Susceptible) -->|$$\beta$$| E(Exposed)
+E -->|$$\epsilon$$| I(Infectious)
+I -->|$$\gamma$$| R(Removed)
 """
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
@@ -237,14 +242,15 @@ class SEQIAHR(ContinuousModel):
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
         return r"""flowchart LR
-S(Susceptible) -->|$\beta$| E(Exposed)
-E -->|$\alpha$*(1-p)| I(Infectious)
-E -->|$\alpha$*p| A(Asymptomatic)
-I -->|$\phi$| H(Hospitalized)
-I -->|$\delta$| R(Removed)
-A -->|$\gamma$| R
-H -->|$\rho$| R
-H -->|$\mu$| D(Deaths)
+         
+S(Susceptible) -->|$$\beta$$| E(Exposed)
+E -->|"$$\alpha(1-p)$$"| I(Infectious)
+E -->|$$\alpha p$$| A(Asymptomatic)
+I -->|$$\phi$$| H(Hospitalized)
+I -->|$$\delta$$| R(Removed)
+A -->|$$\gamma$$| R
+H -->|$$\rho$$| R
+H -->|$$\mu$$| D(Deaths)
 """
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
