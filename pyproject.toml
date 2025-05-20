@@ -36,6 +36,7 @@ packages = ["epimodels"]
 
 [tool.uv]
 dev-dependencies = [
+    "marimo>=0.13.10",
     "nbsphinx>=0.9.6",
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
