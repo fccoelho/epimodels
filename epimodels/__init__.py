@@ -1,5 +1,4 @@
 import sys
-import pandas as pd
 
 if sys.version_info[:2] >= (3, 8):
     # TODO: Import directly (no need for conditional) when `python_requires = >= 3.8`
@@ -63,7 +62,7 @@ class BaseModel:
                     \hline
                     \end{tabular}"""
             else:
-                out = pd.DataFrame(tbl)
+                out = tbl
         else:
-            out = pd.DataFrame()
+            out = {}
         return out

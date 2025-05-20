@@ -9,8 +9,7 @@ from epimodels import BaseModel
 import logging
 from collections import OrderedDict
 from functools import lru_cache
-from typing import List, Dict
-import latexify
+from typing import List, Dict, Optional, Union, Callable, Tuple, Any
 import copy
 
 logging.basicConfig(filename='epimodels.log', filemode='w', level=logging.DEBUG)
@@ -57,7 +56,18 @@ class ContinuousModel(BaseModel):
 
     def __repr__(self):
         f = copy.deepcopy(self._model)
-        return latexify.get_latex(f, use_math_symbols=True,identifiers={'_model': self.model_type})
+        desc = f"""
+        # Model: {self.model_type}
+
+        ```mermaid
+        {self.diagram}
+        ```
+        """
+        return desc
+
+    @property
+    def diagram(self) -> str:
+        return "A[Define a diagram for this model]"
 
     @property
     def dimension(self) -> int:
@@ -80,6 +90,14 @@ class SIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$'})
         self.model_type = 'SIR'
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|$\gamma$| R(Removed)
+"""
+
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, I, R = y
         beta, gamma, N = params['beta'], params['gamma'], params['N']
@@ -99,6 +117,14 @@ class SIR1D(ContinuousModel):
         self.state_variables = OrderedDict({'R': 'Recovered'})
         self.parameters = {'R0': r'{\cal R}_0', 'gamma': r'\gamma', 'S0': r'S_0'}
         self.model_type = 'SIR1D'
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|$\gamma$| R(Recovered)
+"""
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
 
@@ -120,8 +146,15 @@ class SIS(ContinuousModel):
         self.parameters = {'beta': r'\beta', 'gamma': r'\gamma'}
         self.model_type = 'SIS'
 
-    # @lru_cache(1000)
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|$\gamma$| S
+"""
 
+    # @lru_cache(1000)
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, I = y
         beta, gamma, N = params['beta'], params['gamma'], params['N']
@@ -141,6 +174,14 @@ class SIRS(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$', 'xi': r'$\xi$'})
         self.model_type = 'SIRS'
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| I(Infectious)
+I -->|$\gamma$| R(Removed)
+R -->|$\xi$| S
+"""
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, I, R = y
@@ -159,6 +200,14 @@ class SEIR(ContinuousModel):
         self.parameters = OrderedDict({'beta': r'$\beta$', 'gamma': r'$\gamma$', 'epsilon': r'$\epsilon$'})
         self.model_type = 'SEIR'
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| E(Exposed)
+E -->|$\epsilon$| I(Infectious)
+I -->|$\gamma$| R(Removed)
+"""
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, E, I, R = y
@@ -184,6 +233,19 @@ class SEQIAHR(ContinuousModel):
                                        })
         self.model_type = 'SEQIAHR'
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+S(Susceptible) -->|$\beta$| E(Exposed)
+E -->|$\alpha$*(1-p)| I(Infectious)
+E -->|$\alpha$*p| A(Asymptomatic)
+I -->|$\phi$| H(Hospitalized)
+I -->|$\delta$| R(Removed)
+A -->|$\gamma$| R
+H -->|$\rho$| R
+H -->|$\mu$| D(Deaths)
+"""
 
     def _model(self, t: float, y: List[float], params: dict[str, float]) -> List[object]:
         S, E, I, A, H, R, C, D = y
