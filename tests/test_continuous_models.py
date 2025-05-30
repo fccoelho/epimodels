@@ -77,26 +77,28 @@ def test_SEQIAHR():
 
 def test_Dengue4Strain():
     model = Dengue4Strain()
-    inits = [48000, 0, 0, 0, 0.01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    inits = [48000, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     pars = {
-        'beta': 500 / (50000 * 52),  # 500 cases per year
-        'N': 50000,
-        'delta': 0.2,  # Cross-immunity protection
-        'mu': 1 / (1 * 52),  # Mortality rate
+        'beta': 200 / (50000 * 52),  # 200 novos casos per capita per year
+        'N': 50000, #population size
+        'delta': 0.5,  # Cross-immunity protection. 1 means no cross-immunity
+        'mu': 1 / (1 * 52),  # natural Birth/Mortality rate
         'sigma': 1 / 1.5,  # recovery rate
-        'im': 500
+        'im': 200 #  imported cases
     }
-    model(inits, [0, 200], 50000, pars)
+    model(inits, [0, 208], 50000, pars)
     # model.plot_traces()
     pts = len(model.traces['time'])
     Ia1 = np.zeros(pts) # All infectious for strain 1
     Ia2 = np.zeros(pts) # All infectious for strain 2
     Ia3 = np.zeros(pts) # All infectious for strain 3
     Ia4 = np.zeros(pts) # All infectious for strain 4
+    Iall = np.zeros(pts)
     for v,tr in model.traces.items():
         if not v.startswith('I_'):
             continue
+        Iall += tr
         if v.endswith('1'):
             Ia1 += tr
         elif v.endswith('2'):
@@ -109,11 +111,12 @@ def test_Dengue4Strain():
     P.plot(model.traces['time'], Ia2, label='Infectious strain 2')
     P.plot(model.traces['time'], Ia3, label='Infectious strain 3')
     P.plot(model.traces['time'], Ia4, label='Infectious strain 4')
+    P.plot(model.traces['time'], Iall, label='All infectious')
     P.grid()
     P.legend(loc=0)
 
 
-    P.show()
+    # P.show()
 
 # def test_SIS_with_cache():
 #     model = SIS()

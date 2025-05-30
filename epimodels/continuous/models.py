@@ -326,12 +326,12 @@ class Dengue4Strain(ContinuousModel):
                                             'I_2341': 'Infectious 2 and 3 and 4 and 1',
                                             'R_1234': 'Removed 1 and 2 and 3 and 4'
                                             })
-        self.parameters = OrderedDict({'beta': r'$\beta$',
-                                       'N': r'$N$',
-                                       'delta': r'$\delta$',
-                                       'mu': r'$\mu',
-                                       'sigma': r'$\sigma$',
-                                       'im': r'$i_m$',
+        self.parameters = OrderedDict({'beta': r'$\beta$', #  transmission rate
+                                       'N': r'$N$', #  total population
+                                       'delta': r'$\delta$', #  cross-immunity protection
+                                       'mu': r'$\mu', #  mortality rate
+                                       'sigma': r'$\sigma$', #  recovery rate
+                                       'im': r'$i_m$', #  imported cases
                                        })
         self.model_type = 'Dengue4Strain'
 
@@ -342,9 +342,9 @@ class Dengue4Strain(ContinuousModel):
          I_143, I_243, I_124, I_134, I_234, R_123, R_124, R_134, R_234, I_1234, I_1243, I_1342, I_2341, R_1234) = y
 
         beta, N, delta, mu, sigma, im = params['beta'], params['N'], params['delta'], params['mu'], params['sigma'], params['im']
-        m1 = lambda t: (t>5 and t<=20)*im
-        m2 = lambda t: (t>10 and t<=25)*im
-        m3 = lambda t: (t>15 and t<=30)*im
+        m1 = lambda t: (t>5 and t<=10)*im
+        m2 = lambda t: (t>20 and t<=25)*im
+        m3 = lambda t: (t>35 and t<=40)*im
         # m4 = lambda t: (t>60 and t<=75)*im
         return [
             -beta * S * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
