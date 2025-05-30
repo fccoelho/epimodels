@@ -9,7 +9,6 @@ from epimodels import BaseModel
 import logging
 from collections import OrderedDict
 from functools import lru_cache
-import latexify
 import copy
 
 logging.basicConfig(filename='epimodels.log', filemode='w', level=logging.DEBUG)
@@ -199,4 +198,194 @@ class SEQIAHR(ContinuousModel):
             delta * I + rho * H + gamma * A,  # dR/dt
             phi * I,  # (1-p)*alpha*E+ p*alpha*E # Hospit. acumuladas
             mu * H  # Morte acumuladas
+        ]
+
+
+class Dengue4Strain(ContinuousModel):
+    """
+    Dengue 4 strain model
+    """
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict({'S': 'Susceptible',
+                                            'I_1': 'Infectious 1',
+                                            'I_2': 'Infectious 2',
+                                            'I_3': 'Infectious 3',
+                                            'I_4': 'Infectious 4',
+                                            'R_1': 'Removed 1',
+                                            'R_2': 'Removed 2',
+                                            'R_3': 'Removed 3',
+                                            'R_4': 'Removed 4',
+                                            'I_12': 'Infectious 1 and 2',
+                                            'I_13': 'Infectious 1 and 3',
+                                            'I_14': 'Infectious 1 and 4',
+                                            'I_21': 'Infectious 2 and 1',
+                                            'I_23': 'Infectious 2 and 3',
+                                            'I_24': 'Infectious 2 and 4',
+                                            'I_31': 'Infectious 3 and 1',
+                                            'I_32': 'Infectious 3 and 2',
+                                            'I_34': 'Infectious 3 and 4',
+                                            'I_41': 'Infectious 4 and 1',
+                                            'I_42': 'Infectious 4 and 2',
+                                            'I_43': 'Infectious 4 and 3',
+                                            'R_12': 'Removed 1 and 2',
+                                            'R_13': 'Removed 1 and 3',
+                                            'R_14': 'Removed 1 and 4',
+                                            'R_23': 'Removed 2 and 3',
+                                            'R_24': 'Removed 2 and 4',
+                                            'R_34': 'Removed 3 and 4',
+                                            'I_231': 'Infectious 2 and 3 and 1',
+                                            'I_241': 'Infectious 2 and 4 and 1',
+                                            'I_341': 'Infectious 3 and 4 and 1',
+                                            'I_132': 'Infectious 1 and 3 and 2',
+                                            'I_142': 'Infectious 1 and 4 and 2',
+                                            'I_342': 'Infectious 3 and 4 and 2',
+                                            'I_123': 'Infectious 1 and 2 and 3',
+                                            'I_143': 'Infectious 1 and 4 and 3',
+                                            'I_243': 'Infectious 2 and 4 and 3',
+                                            'I_124': 'Infectious 1 and 2 and 4',
+                                            'I_134': 'Infectious 1 and 3 and 4',
+                                            'I_234': 'Infectious 2 and 3 and 4',
+                                            'R_123': 'Removed 1 and 2 and 3',
+                                            'R_124': 'Removed 1 and 2 and 4',
+                                            'R_134': 'Removed 1 and 3 and 4',
+                                            'R_234': 'Removed 2 and 3 and 4',
+                                            'I_1234': 'Infectious 1 and 2 and 3 and 4',
+                                            'I_1243':  'Infectious 1 and 2 and 4 and 3',
+                                            'I_1342': 'Infectious 1 and 3 and 4 and 2',
+                                            'I_2341': 'Infectious 2 and 3 and 4 and 1',
+                                            'R_1234': 'Removed 1 and 2 and 3 and 4'
+                                            })
+        self.parameters = OrderedDict({'beta': r'$\beta$',
+                                       'N': r'$N$',
+                                       'delta': r'$\delta$',
+                                       'mu': r'$\mu',
+                                       'sigma': r'$\sigma$',
+                                       'im': r'$i_m$',
+                                       })
+        self.model_type = 'Dengue4Strain'
+
+    def _model(self, t: float, y: list, params: dict) -> list:
+        (S, I_1, I_2, I_3, I_4, R_1, R_2, R_3, R_4, I_12, I_13, I_14, I_21,
+         I_23, I_24, I_31, I_32, I_34, I_41, I_42, I_43, R_12, R_13, R_14,
+         R_23, R_24, R_34, I_231, I_241, I_341, I_132, I_142, I_342, I_123,
+         I_143, I_243, I_124, I_134, I_234, R_123, R_124, R_134, R_234, I_1234, I_1243, I_1342, I_2341, R_1234) = y
+
+        beta, N, delta, mu, sigma, im = params['beta'], params['N'], params['delta'], params['mu'], params['sigma'], params['im']
+        m1 = lambda t: (t>5 and t<=20)*im
+        m2 = lambda t: (t>10 and t<=25)*im
+        m3 = lambda t: (t>15 and t<=30)*im
+        # m4 = lambda t: (t>60 and t<=75)*im
+        return [
+            -beta * S * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
+                         I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
+                         I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243 + \
+                         I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) + mu * N - mu * S, # S
+            m1(t) + beta * S * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_1 - mu * I_1, # I_1
+            m2(t) + beta * S * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_2 - mu * I_2, # I_2
+            m3(t) + beta * S * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_3 - mu * I_3, # I_3
+            beta * S * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_4 - mu * I_4, # I_4
+            sigma * I_1 - beta * delta * R_1 * \
+            (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
+             I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243 + \
+             I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) - mu * R_1, # R_1
+            sigma * I_2 - beta * delta * R_2 * \
+            (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
+             I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243 + \
+             I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) - mu * R_2, # R_2
+            sigma * I_3 - beta * delta * R_3 * \
+            (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
+             I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
+             I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) - mu * R_3, # R_3
+            sigma * I_4 - beta * delta * R_4 * \
+            (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
+             I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
+             I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) - mu * R_4, # R_4
+            beta * delta * R_1 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_12 - mu * I_12, # I_12
+            beta * delta * R_1 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_13 - mu * I_13, # I_13
+            beta * delta * R_1 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_14 - mu * I_14, # I_14
+            beta * delta * R_2 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_21 - mu * I_21, # I_21
+            beta * delta * R_2 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_23 - mu * I_23, # I_23
+            beta * delta * R_2 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_24 - mu * I_24, # I_24
+            beta * delta * R_3 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_31 - mu * I_31, # I_31
+            beta * delta * R_3 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_32 - mu * I_32, # I_32
+            beta * delta * R_3 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_34 - mu * I_34, # I_34
+            beta * delta * R_4 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_41 - mu * I_41, # I_41
+            beta * delta * R_4 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_42 - mu * I_42, # I_42
+            beta * delta * R_4 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_43 - mu * I_43, # I_43
+            sigma * (I_12 + I_21) - beta * delta * \
+            R_12 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243 + \
+                    I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) - mu * R_12, # R_12
+            sigma * (I_13 + I_31) - beta * delta * \
+            R_13 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
+                    I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) - mu * R_13, # R_13
+            sigma * (I_14 + I_41) - beta * delta * \
+            R_14 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
+                    I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) - mu * R_14, # R_14
+            sigma * (I_23 + I_32) - beta * delta * \
+            R_23 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
+                    I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) - mu * R_23, # R_23
+            sigma * (I_24 + I_42) - beta * delta * \
+            R_24 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
+                    I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) - mu * R_24, # R_24
+            sigma * (I_34 + I_43) - beta * delta * \
+            R_34 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
+                    I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) - mu * R_34, # R_34
+            beta * delta * R_23 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_231 - mu * I_231, # I_231
+            beta * delta * R_24 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_241 - mu * I_241, # I_241
+            beta * delta * R_34 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_341 - mu * I_341, # I_341
+            beta * delta * R_13 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_132 - mu * I_132, # I_132
+            beta * delta * R_14 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_142 - mu * I_142, # I_142
+            beta * delta * R_34 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_342 - mu * I_342, # I_342
+            beta * delta * R_12 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_123 - mu * I_123, # I_123
+            beta * delta * R_14 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_143 - mu * I_143, # I_143
+            beta * delta * R_24 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_243 - mu * I_243, # I_243
+            beta * delta * R_12 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_124 - mu * I_124, # I_124
+            beta * delta * R_13 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_134 - mu * I_134, # I_134
+            beta * delta * R_23 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_234 - mu * I_234, # I_234
+            sigma * (I_123 + I_132 + I_231) - beta * delta * \
+            R_123 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) - mu * R_123, # R_123
+            sigma * (I_124 + I_241 + I_142) - beta * delta * \
+            R_124 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) - mu * R_124, # R_124
+            sigma * (I_134 + I_341 + I_143) - beta * delta * \
+            R_134 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) - mu * R_134, # R_134
+            sigma * (I_234 + I_342 + I_243) - beta * delta * \
+            R_234 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) - mu * R_234, # R_234
+            beta * delta * R_123 * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            - sigma * I_1234 - mu * I_1234, # I_1234
+            beta * delta * R_124 * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
+            - sigma * I_1243 - mu * I_1243, # I_1243
+            beta * delta * R_134 * (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342) \
+            - sigma * I_1342 - mu * I_1342, # I_1342
+            beta * delta * R_234 * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341) \
+            - sigma * I_2341 - mu * I_2341, # I_2341
+            sigma * (I_1234 + I_1243 + I_1342 + I_2341) - mu * R_1234, # R_1234
         ]

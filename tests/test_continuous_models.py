@@ -1,8 +1,11 @@
 __author__ = 'fccoelho'
+
 import sys
+
 sys.path.append('..')
 from matplotlib import pyplot as P
-from epimodels.continuous import (SIS, SIR, SIR1D, SIRS, SEIR, SEQIAHR)
+import numpy as np
+from epimodels.continuous import (SIS, SIR, SIR1D, SIRS, SEIR, SEQIAHR, Dengue4Strain)
 
 
 def test_SIR():
@@ -13,11 +16,13 @@ def test_SIR():
     model.plot_traces()
     # P.show()
 
+
 def test_SIR_with_t_eval():
     model = SIR()
     model([1000, 1, 0], [0, 500], 1001, {'beta': .2, 'gamma': .1}, t_eval=range(0, 500))
     assert len(model.traces['S']) == 500
     # assert len(model.traces['time']) == 50
+
 
 def test_SIR1D():
     model = SIR1D()
@@ -26,6 +31,7 @@ def test_SIR1D():
     assert len(model.traces) == 2
     model.plot_traces()
     # P.show()
+
 
 def test_SIS():
     model = SIS()
@@ -67,6 +73,47 @@ def test_SEQIAHR():
     # assert len(model.traces['time']) == 50
     model.plot_traces()
     # P.show()
+
+
+def test_Dengue4Strain():
+    model = Dengue4Strain()
+    inits = [48000, 0, 0, 0, 0.01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    pars = {
+        'beta': 500 / (50000 * 52),  # 500 cases per year
+        'N': 50000,
+        'delta': 0.2,  # Cross-immunity protection
+        'mu': 1 / (1 * 52),  # Mortality rate
+        'sigma': 1 / 1.5,  # recovery rate
+        'im': 500
+    }
+    model(inits, [0, 200], 50000, pars)
+    # model.plot_traces()
+    pts = len(model.traces['time'])
+    Ia1 = np.zeros(pts) # All infectious for strain 1
+    Ia2 = np.zeros(pts) # All infectious for strain 2
+    Ia3 = np.zeros(pts) # All infectious for strain 3
+    Ia4 = np.zeros(pts) # All infectious for strain 4
+    for v,tr in model.traces.items():
+        if not v.startswith('I_'):
+            continue
+        if v.endswith('1'):
+            Ia1 += tr
+        elif v.endswith('2'):
+            Ia2 += tr
+        elif v.endswith('3'):
+            Ia3 += tr
+        elif v.endswith('4'):
+            Ia4 += tr
+    P.plot(model.traces['time'], Ia1, label='Infectious strain 1')
+    P.plot(model.traces['time'], Ia2, label='Infectious strain 2')
+    P.plot(model.traces['time'], Ia3, label='Infectious strain 3')
+    P.plot(model.traces['time'], Ia4, label='Infectious strain 4')
+    P.grid()
+    P.legend(loc=0)
+
+
+    P.show()
 
 # def test_SIS_with_cache():
 #     model = SIS()
