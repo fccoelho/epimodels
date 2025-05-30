@@ -51,17 +51,18 @@ class BaseModel:
                 'Symbol': list(self.parameters.values())
             }
 
-        if latex == True:
-            out = r"""\begin[l|c|c]{tabular}
-            \hline
-            Parameter & Value & Symbol \\
-            \hline
-            """ + \
-                  r"\\".join([f"{p}&{v}&{s}" for p, v, s in zip(tbl['Parameter'], tbl['Value'], tbl['Symbol'])]) + \
-                  r"""
-                  \hline
-                  \end{tabular}"""
+            if latex == True:
+                out = r"""\begin[l|c|c]{tabular}
+                \hline
+                Parameter & Value & Symbol \\
+                \hline
+                """ + \
+                    r"\\".join([f"{p}&{v}&{s}" for p, v, s in zip(tbl['Parameter'], tbl['Value'], tbl['Symbol'])]) + \
+                    r"""
+                    \hline
+                    \end{tabular}"""
+            else:
+                out = tbl
         else:
-            import pandas as pd
-            out = pd.DataFrame(tbl)
+            out = {}
         return out

@@ -13,4 +13,3 @@ pytest-cov
 matplotlib
 mypy
 sphinx
-latexify-py

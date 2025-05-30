@@ -19,6 +19,7 @@ Contents
    :caption: Contents:
 
    Getting Started <geting_started>
+   Model Overview <models>
    Examples/Continuous_models
    Examples/Discrete_models
    License <license>
