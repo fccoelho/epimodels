@@ -335,6 +335,40 @@ class Dengue4Strain(ContinuousModel):
                                        })
         self.model_type = 'Dengue4Strain'
 
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+    S(Susceptible) -->|$$\beta$$| I1(Infectious 1)
+    S -->|$$\beta$$| I2(Infectious 2) 
+    S -->|$$\beta$$| I3(Infectious 3)
+    S -->|$$\beta$$| I4(Infectious 4)
+    
+    I1 -->|$$\sigma$$| R1(Removed 1)
+    I2 -->|$$\sigma$$| R2(Removed 2)
+    I3 -->|$$\sigma$$| R3(Removed 3)
+    I4 -->|$$\sigma$$| R4(Removed 4)
+    
+    R1 -->|$$\delta$$| I12(1+2)
+    R1 -->|$$\delta$$| I13(1+3)
+    R1 -->|$$\delta$$| I14(1+4)
+    
+    R2 -->|$$\delta$$| I21(2+1)
+    R2 -->|$$\delta$$| I23(2+3)
+    R2 -->|$$\delta$$| I24(2+4)
+    
+    R3 -->|$$\delta$$| I31(3+1)
+    R3 -->|$$\delta$$| I32(3+2)
+    R3 -->|$$\delta$$| I34(3+4)
+    
+    R4 -->|$$\delta$$| I41(4+1)
+    R4 -->|$$\delta$$| I42(4+2)
+    R4 -->|$$\delta$$| I43(4+3)
+    
+    classDef infected fill:#f9d5e5,stroke:#c2185b
+    class I1,I2,I3,I4,I12,I13,I14,I21,I23,I24,I31,I32,I34,I41,I42,I43 infected
+"""
+
     def _model(self, t: float, y: list, params: dict) -> list:
         (S, I_1, I_2, I_3, I_4, R_1, R_2, R_3, R_4, I_12, I_13, I_14, I_21,
          I_23, I_24, I_31, I_32, I_34, I_41, I_42, I_43, R_12, R_13, R_14,
