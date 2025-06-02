@@ -385,7 +385,7 @@ class Dengue4Strain(ContinuousModel):
     R13 -->|$$\delta$$| I132(I 1+3+2)
     R14 -->|$$\delta$$| I142(I 1+4+2)
     
-    R21 -->|$$\delta$$| I213(I 2+1+3)
+    R12 -->|$$\delta$$| I213(I 2+1+3)
     R23 -->|$$\delta$$| I231(I 2+3+1)
     R24 -->|$$\delta$$| I241(I 2+4+1)
      
@@ -424,6 +424,16 @@ class Dengue4Strain(ContinuousModel):
     I1243 -->|$$\sigma$$| R1234(R 1+2+3+4)
     I1342 -->|$$\sigma$$| R1234(R 1+2+3+4)
     I2341 -->|$$\sigma$$| R1234(R 1+2+3+4)
+    
+    classDef strain1 fill:#ffcccc,stroke:#ff0000
+    classDef strain2 fill:#ccffcc,stroke:#00ff00
+    classDef strain3 fill:#ccccff,stroke:#0000ff
+    classDef strain4 fill:#ffccff,stroke:#ff00ff
+    
+    class I1,I21,I31,I41,I231,I241,I341,I2341 strain1
+    class I2,I12,I32,I42,I132,I213,I342,I142,I1342 strain2
+    class I3,I13,I23,I43,I123,I143,I243,I1243 strain3
+    class I4,I14,I24,I34,I142,I124,I134,I342,I124,I134,I234,I1234 strain4;
 """
 
     def _model(self, t: float, y: list, params: dict) -> list:
