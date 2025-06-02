@@ -15,7 +15,7 @@ except PackageNotFoundError:  # pragma: no cover
 finally:
     del version, PackageNotFoundError
 
-from matplotlib import pyplot as P
+from matplotlib import pyplot as plt
 
 
 class BaseModel:
@@ -38,10 +38,10 @@ class BaseModel:
         """
         for series, data in self.traces.items():
             if series in self.state_variables:
-                P.plot(self.traces['time'], data, label=series)
-        P.legend(loc=0)
-        P.grid()
-        P.title("{} model".format(self.model_type))
+                plt.plot(self.traces['time'], data, label=series)
+        plt.legend(loc=0)
+        plt.grid()
+        plt.title("{} model".format(self.model_type))
 
     def parameter_table(self, latex: bool = False):
         if self.parameters:

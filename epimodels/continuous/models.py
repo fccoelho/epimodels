@@ -33,7 +33,7 @@ class ContinuousModel(BaseModel):
         # except AssertionError:
         #     logging.Error('Invalid model type: {}'.format(model_type))
 
-    def __call__(self, inits: list, trange: list, totpop: float, params: dict, method: str = 'RK45', **kwargs):
+    def __call__(self, inits: List[float], trange: List[float], totpop: float, params: dict, method: str = 'RK45', **kwargs):
         """
         Run the model
         :param inits: initial contitions
@@ -436,7 +436,7 @@ class Dengue4Strain(ContinuousModel):
     class I4,I14,I24,I34,I142,I124,I134,I342,I124,I134,I234,I1234 strain4;
 """
 
-    def _model(self, t: float, y: list, params: dict) -> list:
+    def _model(self, t: float, y: List[float], params: Dict[str, Any]) -> List[float]:
         (S, I_1, I_2, I_3, I_4, R_1, R_2, R_3, R_4, I_12, I_13, I_14, I_21,
          I_23, I_24, I_31, I_32, I_34, I_41, I_42, I_43, R_12, R_13, R_14,
          R_23, R_24, R_34, I_231, I_241, I_341, I_132, I_142, I_342, I_123,

@@ -84,7 +84,7 @@ class DiscreteModel(BaseModel):
         return "A[Define a diagram for this model]"
 
 
-    def __call__(self, inits: List[float], trange: List[int], totpop: int, params: dict[str, float], **kwargs)-> None:
+    def __call__(self, inits: List[float], trange: List[float], totpop: int, params: dict[str, Any], **kwargs)-> None:
         self.param_values = OrderedDict(zip(self.parameters.keys(), params.values()))
         res = self.run(inits, trange, totpop, params)
         self.traces.update(res)
@@ -95,7 +95,6 @@ class DiscreteModel(BaseModel):
         raise NotImplementedError
 
     def __repr__(self):
-        f = copy.deepcopy(self.model)
         desc = f"""
 # Model: {self.model_type}
 
@@ -148,7 +147,7 @@ Ic4 -->|$$\beta$$| Ig4(Comp_age4)
 
          """
 
-    def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
+    def model(self, inits: List[float], trange: List[float], totpop: int, params: Dict[str, Any]) -> dict:
         """
         Flu model with classes S,E,I subclinical, I mild, I medium, I serious, deaths
         """
@@ -269,11 +268,10 @@ S(Susceptible) -->|$$\beta$$| I(Infectious)
 I -->|$$\gamma$$| S
 """
 
-    def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
+    def model(self, inits: List[float], trange: List[float], totpop: int, params: Dict[str, Any]) -> dict:
         """
         calculates the model SIS, and return its values (no demographics)
         - inits = (E,I,S)
-        - theta = infectious individuals from neighbor sites
         :param trange:
         :param params:
         :param inits: tuple with initial conditions
@@ -507,7 +505,7 @@ I -->|$$r\delta$$| R(Removed)
 I -->|"$$r(1-\delta)$$"| S
 """
 
-    def model(self, inits, trange, totpop, params):
+    def model(self, inits: list, trange, totpop, params):
         """
         Defines the model SEIpRpS:
         - inits = (E,I,S)
