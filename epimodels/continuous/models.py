@@ -339,34 +339,91 @@ class Dengue4Strain(ContinuousModel):
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
         return r"""flowchart LR
-    S(Susceptible) -->|$$\beta$$| I1(Infectious 1)
-    S -->|$$\beta$$| I2(Infectious 2) 
-    S -->|$$\beta$$| I3(Infectious 3)
-    S -->|$$\beta$$| I4(Infectious 4)
+    S(Susceptible) -->|$$\beta$$| I1(I 1)
+    S -->|$$\beta$$| I2(I 2) 
+    S -->|$$\beta$$| I3(I 3)
+    S -->|$$\beta$$| I4(I 4)
     
-    I1 -->|$$\sigma$$| R1(Removed 1)
-    I2 -->|$$\sigma$$| R2(Removed 2)
-    I3 -->|$$\sigma$$| R3(Removed 3)
-    I4 -->|$$\sigma$$| R4(Removed 4)
+    I1 -->|$$\sigma$$| R1(R 1)
+    I2 -->|$$\sigma$$| R2(R 2)
+    I3 -->|$$\sigma$$| R3(R 3)
+    I4 -->|$$\sigma$$| R4(R 4)
     
-    R1 -->|$$\delta$$| I12(1+2)
-    R1 -->|$$\delta$$| I13(1+3)
-    R1 -->|$$\delta$$| I14(1+4)
+    R1 -->|$$\delta$$| I12(I 1+2)
+    R1 -->|$$\delta$$| I13(I 1+3)
+    R1 -->|$$\delta$$| I14(I 1+4)
     
-    R2 -->|$$\delta$$| I21(2+1)
-    R2 -->|$$\delta$$| I23(2+3)
-    R2 -->|$$\delta$$| I24(2+4)
+    R2 -->|$$\delta$$| I21(I 2+1)
+    R2 -->|$$\delta$$| I23(I 2+3)
+    R2 -->|$$\delta$$| I24(I 2+4)
     
-    R3 -->|$$\delta$$| I31(3+1)
-    R3 -->|$$\delta$$| I32(3+2)
-    R3 -->|$$\delta$$| I34(3+4)
+    R3 -->|$$\delta$$| I31(I 3+1)
+    R3 -->|$$\delta$$| I32(I 3+2)
+    R3 -->|$$\delta$$| I34(I 3+4)
     
-    R4 -->|$$\delta$$| I41(4+1)
-    R4 -->|$$\delta$$| I42(4+2)
-    R4 -->|$$\delta$$| I43(4+3)
+    R4 -->|$$\delta$$| I41(I 4+1)
+    R4 -->|$$\delta$$| I42(I 4+2)
+    R4 -->|$$\delta$$| I43(I 4+3)
     
-    classDef infected fill:#f9d5e5,stroke:#c2185b
-    class I1,I2,I3,I4,I12,I13,I14,I21,I23,I24,I31,I32,I34,I41,I42,I43 infected
+    I12 -->|$$\sigma$$| R12(R 1+2)
+    I13 -->|$$\sigma$$| R13(R 1+3)
+    I14 -->|$$\sigma$$| R14(R 1+4)
+    
+    I21 -->|$$\sigma$$| R12(R 1+2)
+    I23 -->|$$\sigma$$| R23(R 2+3)
+    I24 -->|$$\sigma$$| R24(R 2+4)
+    
+    I31 -->|$$\sigma$$| R13(R 1+3)
+    I32 -->|$$\sigma$$| R23(R 2+3)
+    I34 -->|$$\sigma$$| R34(R 3+4)
+    
+    I41 -->|$$\sigma$$| R14(R 1+4)
+    I42 -->|$$\sigma$$| R24(R 2+4)
+    I43 -->|$$\sigma$$| R34(R 3+4)
+    
+    R12 -->|$$\delta$$| I123(I 1+2+3)
+    R13 -->|$$\delta$$| I132(I 1+3+2)
+    R14 -->|$$\delta$$| I142(I 1+4+2)
+    
+    R21 -->|$$\delta$$| I213(I 2+1+3)
+    R23 -->|$$\delta$$| I231(I 2+3+1)
+    R24 -->|$$\delta$$| I241(I 2+4+1)
+     
+    R24 -->|$$\delta$$| I243(I 2+4+3)
+    R34 -->|$$\delta$$| I341(I 3+4+1)
+    R34 -->|$$\delta$$| I342(I 3+4+2)
+     
+    R23 -->|$$\delta$$| I234(I 2+3+4)
+    R14 -->|$$\delta$$| I143(I 1+4+3)
+    R13 -->|$$\delta$$| I134(I 1+3+4)
+    
+    R12 -->|$$\delta$$| I124(I 1+2+4)
+    
+    I123 -->|$$\sigma$$| R123(R 1+2+3)
+    I132 -->|$$\sigma$$| R123(R 1+2+3)
+    I124 -->|$$\sigma$$| R124(R 1+2+4)
+    
+    I142 -->|$$\sigma$$| R124(R 1+2+4)
+    I143 -->|$$\sigma$$| R134(R 1+3+4)
+    I134 -->|$$\sigma$$| R134(R 1+3+4)
+    
+    I234 -->|$$\sigma$$| R234(R 2+3+4)
+    I243 -->|$$\sigma$$| R234(R 2+3+4)
+    I341 -->|$$\sigma$$| R134(R 1+3+4)
+    
+    I342 -->|$$\sigma$$| R234(R 2+3+4)
+    I231 -->|$$\sigma$$| R123(R 1+2+3)
+    I241 -->|$$\sigma$$| R124(R 1+2+4)
+    
+    R123 -->|$$\delta$$| I1234(I 1+2+3+4)
+    R124 -->|$$\delta$$| I1243(I 1+2+4+3)
+    R134 -->|$$\delta$$| I1342(I 1+3+4+2)
+    R234 -->|$$\delta$$| I2341(I 2+3+4+1)
+    
+    I1234 -->|$$\sigma$$| R1234(R 1+2+3+4)
+    I1243 -->|$$\sigma$$| R1234(R 1+2+3+4)
+    I1342 -->|$$\sigma$$| R1234(R 1+2+3+4)
+    I2341 -->|$$\sigma$$| R1234(R 1+2+3+4)
 """
 
     def _model(self, t: float, y: list, params: dict) -> list:
