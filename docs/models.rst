@@ -92,11 +92,9 @@ Next, we describe in more detail each one of these models in their deterministic
 | :math:`\alpha` | mixing parameter (:math:`\alpha = 1` means        |
 |                | homogeneous mixing)                               |
 +----------------+---------------------------------------------------+
-| :math:`n`      | number of visitors                                |
-+----------------+---------------------------------------------------+
 | :math:`N`      | population :math:`(S+E+I+R)`                      |
 +--------------------------------------------------------------------+
-| :math:`B`      | susceptible pool replenishment                    |
+| :math:`B`      | susceptible pool replenishment (birth rate)       |
 +----------------+---------------------------------------------------+
 | :math:`r`      | fraction of :math:`I` recovering from infection   |
 |                | per unit of time :math:`([0,1])`                  |
@@ -114,14 +112,14 @@ Next, we describe in more detail each one of these models in their deterministic
 
 .. index:: Models;SIR
 **SIR models**
-    Examples of diseases represented by SIR models are measles, chickenpox. Some diseases that do not confer lifelong immunity may be represented by this model if only short term dynamics is of interest. In the scale of a year, influenza and pertussis, for example, could be described using SIR. The SIR model is implemented in EpiGrass as a system of four difference equations. Besides the three equations describing the dynamics of :math:`S`, :math:`I` and :math:`R`, a fourth equation explicitly defines the number of new cases per time step, :math:`L(t)` (i.e., the incidence). In general, this quantity is embedded in the :math:`I` equation (prevalence), but it is important to keep track of the incidence if one wishes to compare prediction with notification data.
+    Examples of diseases represented by SIR models are measles, chickenpox. Some diseases that do not confer lifelong immunity may be represented by this model if only short term dynamics is of interest. In the scale of a year, influenza and pertussis, for example, could be described using SIR. The SIR model is implemented as a system of four difference equations. Besides the three equations describing the dynamics of :math:`S`, :math:`I` and :math:`R`, a fourth equation explicitly defines the number of new cases per time step, :math:`L(t)` (i.e., the incidence). In general, this quantity is embedded in the :math:`I` equation (prevalence), but it is important to keep track of the incidence if one wishes to compare prediction with notification data.
 
 .. math::
-    :nowrap:
+    :no-wrap:
     :label: E:SIRmodel
 
     \begin{align}
-        L_{t+1} &= \beta S_t \frac{(I_t+\theta)^\alpha} {N_t+n_t}\nonumber \\
+        L_{t+1} &= \beta S_t \frac{I_t^\alpha} {N_t}\nonumber \\
         I_{t+1} &= L_{t+1} + (1-r)I_t\nonumber\\
         S_{t+1} &= S_t + B - L_{t+1}\nonumber\\
         R_{t+1} &= N_t-(S_{t+1}+I_{t+1})\nonumber
@@ -142,7 +140,7 @@ This model can be easily extended to include diseases without recovery, for exam
     :label: E:SISmodel
 
     \begin{align}
-            L_{t+1} &= \beta S_t \frac{(I_t+\theta)^\alpha} {N_t+n_t} \nonumber\\
+            L_{t+1} &= \beta S_t \frac{I_t^\alpha} {N_t} \nonumber\\
             I_{t+1} &= L_{t+1} + (1-r)I_t\nonumber\\
             S_{t+1} &= S_t + B - L_{t+1} + r I_{t+1}\nonumber
     \end{align}
@@ -205,7 +203,7 @@ Related models, that included the latent state $E$ are: \textit{SEIpRpS}, *SEIpR
     :label: E:SIpRpSmodel
 
     \begin{align}
-            L_{t+1} &= \beta S_t \frac{(I_t+\theta)^\alpha} {N_t+n_t}\nonumber \\
+            L_{t+1} &= \beta S_t \frac{I_t^\alpha} {N_t}\nonumber \\
             I_{t+1} &= L_{t+1} + (1-r)I_t\nonumber\\
             S_{t+1} &= S_t + B - L_{t+1} + (1-\delta) r I_t\nonumber\\
             R_{t+1} &= N_t-(S_{t+1}+I_{t+1})\nonumber
@@ -220,12 +218,12 @@ Related models, that included the latent state $E$ are: \textit{SEIpRpS}, *SEIpR
     :label: E:SIpRmodel
 
     \begin{align}
-        L_{S,t+1} &= \beta S_t \frac{(I_t+\theta)^\alpha} {N_t+n_t}\nonumber \\
-        L_{R,t+1} &= p \beta R_t \frac{(I_t+\theta)^\alpha} {N_t+n_t}\nonumber\\
+        L_{S,t+1} &= \beta S_t \frac{I_t^\alpha} {N_t}\nonumber \\
+        L_{R,t+1} &= p \beta R_t \frac{I_t^\alpha} {N_t}\nonumber\\
         I_{t+1} &= L_{S,t+1} + L_{R,t+1} + (1-r)I_t\nonumber\\
         S_{t+1} &= S_t + B - L_{S,t+1} \nonumber\\
         R_{t+1} &= N_t-(S_{t+1}+I_{t+1}) \nonumber
-        \end{align}
+    \end{align}
 
 .. index:: Models;SIRS
 
@@ -237,8 +235,8 @@ Related models, that included the latent state $E$ are: \textit{SEIpRpS}, *SEIpR
     :label: E:SIRSmodel
 
     \begin{align} \label{}
-            L_{S,t+1} &= \beta S_t \frac{(I_t+\theta)^\alpha} {N_t+n_t}\nonumber \\
-        I_{t+1} &= L_{S,t+1} + L_{R,t+1} + (1-r)I_t\nonumber\\
+            L_{S,t+1} &= \beta S_t \frac{I_t^\alpha} {N_t}\nonumber \\
+            I_{t+1} &= L_{S,t+1} + L_{R,t+1} + (1-r)I_t\nonumber\\
             S_{t+1} &= S_t + B - L_{S,t+1} + w R_t\nonumber\\
             R_{t+1} &= N_t-(S_{t+1}+I_{t+1}) \nonumber
     \end{align}
