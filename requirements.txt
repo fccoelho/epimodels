@@ -13,3 +13,4 @@ pytest-cov
 matplotlib
 mypy
 sphinx
+nbsphinx
