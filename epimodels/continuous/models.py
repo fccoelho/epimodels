@@ -443,10 +443,10 @@ class Dengue4Strain(ContinuousModel):
          I_143, I_243, I_124, I_134, I_234, R_123, R_124, R_134, R_234, I_1234, I_1243, I_1342, I_2341, R_1234) = y
 
         beta, N, delta, mu, sigma, im = params['beta'], params['N'], params['delta'], params['mu'], params['sigma'], params['im']
-        m1 = lambda t: (t>5 and t<=10)*im
-        m2 = lambda t: (t>20 and t<=25)*im
-        m3 = lambda t: (t>35 and t<=40)*im
-        # m4 = lambda t: (t>60 and t<=75)*im
+        m1 = lambda t: 1 if (im[0] < t < (im[0]+5)) else 0
+        m2 = lambda t: 1 if (im[1] < t < (im[1]+5)) else 0
+        m3 = lambda t: 1 if (im[2] < t < (im[2]+5)) else 0
+        m4 = lambda t: 1 if (im[3] < t < (im[3]+5)) else 0
         return [
             -beta * S * (I_1 + I_21 + I_31 + I_41 + I_231 + I_241 + I_341 + I_2341 + \
                          I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
@@ -458,7 +458,7 @@ class Dengue4Strain(ContinuousModel):
             - sigma * I_2 - mu * I_2, # I_2
             m3(t) + beta * S * (I_3 + I_13 + I_23 + I_43 + I_123 + I_143 + I_243 + I_1243) \
             - sigma * I_3 - mu * I_3, # I_3
-            beta * S * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
+            m4(t) + beta * S * (I_4 + I_14 + I_24 + I_34 + I_124 + I_134 + I_234 + I_1234) \
             - sigma * I_4 - mu * I_4, # I_4
             sigma * I_1 - beta * delta * R_1 * \
             (I_2 + I_12 + I_32 + I_42 + I_132 + I_142 + I_342 + I_1342 + \
