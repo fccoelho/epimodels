@@ -1123,3 +1123,5 @@ class Dengue4Strain(ContinuousModel):
             - mu * I_2341,  # I_2341
             sigma * (I_1234 + I_1243 + I_1342 + I_2341) - mu * R_1234,  # R_1234
         ]
+
+__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain"]

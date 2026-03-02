@@ -948,3 +948,5 @@ H -->|$$\mu$$| D(Deaths)
             "C": C,
             "D": D,
         }
+
+__all__ = ["DiscreteModel", "Influenza", "SIS", "SIR", "SEIS", "SEIR", "SIpRpS", "SEIpRpS", "SIpR", "SEIpR", "SIRS", "SEQIAHR"]
