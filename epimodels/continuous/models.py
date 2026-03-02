@@ -91,7 +91,32 @@ class ContinuousModel(BaseModel):
 
 class SIR(ContinuousModel):
     """
-    SIR Model
+    SIR (Susceptible-Infectious-Removed) Model.
+
+    A classic compartmental model for infectious disease dynamics.
+
+    State Variables:
+        - S: Susceptible individuals
+        - I: Infectious individuals
+        - R: Removed (recovered/immune) individuals
+
+    Parameters:
+        - beta (β): Transmission rate (contact rate × probability of transmission)
+        - gamma (γ): Recovery rate (1 / average infectious period)
+
+    Equations:
+
+        dS/dt = -βSI/N
+        dI/dt = βSI/N - γI
+        dR/dt = γI
+
+    Basic Reproduction Number:
+        R₀ = β/γ
+
+    Example:
+        >>> model = SIR()
+        >>> model([990, 10, 0], [0, 100], 1000, {'beta': 0.3, 'gamma': 0.1})
+        >>> print(model.R0)  # 3.0
     """
 
     def __init__(self):
@@ -171,7 +196,29 @@ I -->|$$\gamma$$| R(Recovered)
 
 class SIS(ContinuousModel):
     """
-    SIS Model.
+    SIS (Susceptible-Infectious-Susceptible) Model.
+
+    A model for diseases that do not confer immunity after recovery.
+
+    State Variables:
+        - S: Susceptible individuals
+        - I: Infectious individuals
+
+    Parameters:
+        - beta (β): Transmission rate
+        - gamma (γ): Recovery rate
+
+    Equations:
+
+        dS/dt = -βSI/N + γI
+        dI/dt = βSI/N - γI
+
+    Basic Reproduction Number:
+        R₀ = β/γ
+
+    Note:
+        Total population N = S + I is conserved.
+        When R₀ > 1, endemic equilibrium exists at I* = N(1 - 1/R₀).
     """
 
     def __init__(self):
@@ -213,7 +260,31 @@ I -->|$$\gamma$$| S
 
 class SIRS(ContinuousModel):
     """
-    SIRS Model
+    SIRS (Susceptible-Infectious-Removed-Susceptible) Model.
+
+    A model for diseases where immunity wanes over time.
+
+    State Variables:
+        - S: Susceptible individuals
+        - I: Infectious individuals
+        - R: Removed (temporarily immune) individuals
+
+    Parameters:
+        - beta (β): Transmission rate
+        - gamma (γ): Recovery rate
+        - xi (ξ): Waning immunity rate (1 / average immune period)
+
+    Equations:
+
+        dS/dt = -βSI/N + ξR
+        dI/dt = βSI/N - γI
+        dR/dt = γI - ξR
+
+    Basic Reproduction Number:
+        R₀ = β/γ
+
+    Note:
+        Unlike SIR, individuals in R return to S at rate ξ.
     """
 
     def __init__(self):
@@ -256,6 +327,37 @@ R -->|$$\xi$$| S
 
 
 class SEIR(ContinuousModel):
+    """
+    SEIR (Susceptible-Exposed-Infectious-Removed) Model.
+
+    A model with an exposed (latent) compartment for diseases with incubation period.
+
+    State Variables:
+        - S: Susceptible individuals
+        - E: Exposed (infected but not yet infectious) individuals
+        - I: Infectious individuals
+        - R: Removed individuals
+
+    Parameters:
+        - beta (β): Transmission rate
+        - gamma (γ): Recovery rate
+        - epsilon (ε): Incubation rate (1 / average latent period)
+
+    Equations:
+
+        dS/dt = -βSI/N
+        dE/dt = βSI/N - εE
+        dI/dt = εE - γI
+        dR/dt = γI
+
+    Basic Reproduction Number:
+        R₀ = β/γ
+
+    Note:
+        The exposed compartment E represents individuals who have been infected
+        but are not yet infectious (latent period).
+    """
+
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict(
