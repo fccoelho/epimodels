@@ -52,6 +52,7 @@ Contents
    Examples/Continuous_models
    Examples/Discrete_models
    Examples/API_features
+   Examples/Phase_space_analysis
 
 .. toctree::
    :maxdepth: 2
