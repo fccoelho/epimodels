@@ -5,11 +5,10 @@ license: GPL V3 or Later
 """
 
 import numpy as np
-from scipy.integrate import solve_ivp
 from epimodels import BaseModel
 import logging
 from collections import OrderedDict
-from typing import Any
+from typing import Any, Union
 import copy
 
 logging.basicConfig(filename="epimodels.log", filemode="w", level=logging.DEBUG)
@@ -33,26 +32,38 @@ class ContinuousModel(BaseModel):
         totpop: float,
         params: dict,
         method: str = "RK45",
+        solver: Any = None,
         validate: bool = True,
         **kwargs,
     ):
         """
         Run the model
-        :param inits: initial contitions
+
+        :param inits: initial conditions
         :param trange: time range: [t0, tf]
         :param totpop: total population size
         :param params: dictionary of parameters
-        :param method: integration method. default is 'RK45'
+        :param method: integration method (deprecated, use solver instead). default is 'RK45'
+        :param solver: SolverBase instance (ScipySolver or DiffraxSolver). If None, uses ScipySolver with method.
         :param validate: whether to validate parameters and initial conditions
-        :param kwargs: Additional parameters passed on to solve_ivp
+        :param kwargs: Additional parameters passed on to the solver
         """
         if validate:
             self.validate_parameters(params)
             self.validate_initial_conditions(inits, totpop)
 
-        self.method = method
-        self.kwargs = kwargs
         self.param_values = OrderedDict((k, params[k]) for k in self.parameters.keys())
+
+        if solver is not None:
+            self.solver = solver
+            self.method = getattr(solver, "method", getattr(solver, "solver_name", "custom"))
+        else:
+            from epimodels.solvers import ScipySolver
+
+            self.solver = ScipySolver(method=method)
+            self.method = method
+
+        self.kwargs = kwargs
         sol = self.run(inits, trange, totpop, params, **kwargs)
         res = {v: sol.y[s, :] for v, s in zip(self.state_variables.keys(), range(sol.y.shape[0]))}
         res["time"] = sol.t
@@ -81,11 +92,12 @@ class ContinuousModel(BaseModel):
         return len(self.state_variables)
 
     def run(self, inits, trange, totpop, params, **kwargs):
-        # model = model_types[self.model_type]['function']
         params["N"] = totpop
-        sol = solve_ivp(
-            lambda t, y: self._model(t, y, params), trange, inits, self.method, **kwargs
-        )
+
+        def fn(t, y):
+            return self._model(t, y, params)
+
+        sol = self.solver.solve(fn, tuple(trange), inits, **kwargs)
         return sol
 
 
@@ -1123,5 +1135,6 @@ class Dengue4Strain(ContinuousModel):
             - mu * I_2341,  # I_2341
             sigma * (I_1234 + I_1243 + I_1342 + I_2341) - mu * R_1234,  # R_1234
         ]
+
 
 __all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain"]
