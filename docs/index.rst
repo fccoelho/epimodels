@@ -44,6 +44,7 @@ Contents
 
    geting_started
    models
+   solvers
 
 .. toctree::
    :maxdepth: 2
@@ -71,6 +72,13 @@ Contents
 
 API Overview
 ============
+
+Solvers
+-------
+
+ODE Solvers (Unified interface)
+  - :class:`~epimodels.solvers.ScipySolver` - Scipy-based solver (CPU)
+  - :class:`~epimodels.solvers.DiffraxSolver` - JAX-accelerated solver (GPU)
 
 Model Classes
 -------------
