@@ -1,6 +1,18 @@
 
 # Epimodels
 
+[![PyPI version](https://badge.fury.io/py/epimodels.svg)](https://badge.fury.io/py/epimodels)
+[![Python](https://img.shields.io/pypi/pyversions/epimodels.svg)](https://pypi.org/project/epimodels/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation Status](https://readthedocs.org/projects/epimodels/badge/?version=latest)](https://epimodels.readthedocs.io/en/latest/?badge=latest)
+[![GitHub Actions Workflow Status](https://github.com/fccoelho/epimodels/actions/workflows/python-package.yml/badge.svg)](https://github.com/fccoelho/epimodels/actions/workflows/python-package.yml)
+[![GitHub stars](https://img.shields.io/github/stars/fccoelho/epimodels.svg?style=social)](https://github.com/fccoelho/epimodels/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/fccoelho/epimodels.svg?style=social)](https://github.com/fccoelho/epimodels/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/fccoelho/epimodels.svg)](https://github.com/fccoelho/epimodels/issues)
+[![GitHub last commit](https://img.shields.io/github/last-commit/fccoelho/epimodels.svg)](https://github.com/fccoelho/epimodels/commits/master)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange.svg)](https://docs.astral.sh/ruff/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+
 This library a simple interface to simulate mathematical epidemic models.
 
 
