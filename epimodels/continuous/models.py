@@ -1407,33 +1407,56 @@ Ev -->|$$b_3$$| Iv
 
         return [dSh, dIh, dRh, dSv, dEv, dIv]
     
-    def plot_human_traces(self):
-        traces = self.traces  # this is a dict
-        t = range(len(next(iter(traces.values()))))  # generate time vector from length of any list
-
-        plt.figure()
-        plt.plot(t, traces["Sh"], label="Sh (Susceptible)")
-        plt.plot(t, traces["Ih"], label="Ih (Infectious)")
-        plt.plot(t, traces["Rh"], label="Rh (Recovered)")
-        plt.title("Human Dynamics (SIR)")
-        plt.xlabel("Time")
-        plt.ylabel("Population")
-        plt.legend()
-        plt.show()
+    def plot(self, compartments=None, figsize=(12, 6)):
+        """
+        Plot selected compartments with proper time axis.
         
-
-    def plot_mosquito_traces(self):
-        traces = self.traces
-        t = range(len(next(iter(traces.values()))))  # same time vector
-
-        plt.figure()
-        plt.plot(t, traces["Sv"], label="Sv (Susceptible)")
-        plt.plot(t, traces["Ev"], label="Ev (Exposed)")
-        plt.plot(t, traces["Iv"], label="Iv (Infectious)")
-        plt.title("Mosquito Dynamics (SEI)")
-        plt.xlabel("Time")
-        plt.ylabel("Population")
-        plt.legend()
+        Parameters:
+        -----------
+        compartments : list, optional
+            List of compartment names to plot. If None, plots all compartments.
+        figsize : tuple, optional
+            Figure size (width, height)
+        """
+        if not self.traces or "time" not in self.traces:
+            print("No data available. Run the model first with: model(inits, trange, totpop, params)")
+            return
+        
+        t = self.traces["time"]
+        
+        if compartments is None:
+            # Plot all compartments except 'time'
+            compartments = [k for k in self.traces.keys() if k != "time"]
+        
+        plt.figure(figsize=figsize)
+        for comp in compartments:
+            if comp in self.traces:
+                plt.plot(t, self.traces[comp], label=comp, linewidth=2)
+        
+        plt.grid(True, alpha=0.3)
+        plt.legend(fontsize=10)
+        plt.xlabel('Time (days)', fontsize=12)
+        plt.ylabel('Population', fontsize=12)
+        
+        # Smart title based on which compartments are being plotted
+        human_comps = ['Sh', 'Ih', 'Rh']
+        mosquito_comps = ['Sv', 'Ev', 'Iv']
+        
+        # Check what we're plotting
+        has_humans = any(comp in human_comps for comp in compartments)
+        has_mosquitoes = any(comp in mosquito_comps for comp in compartments)
+        
+        if has_humans and has_mosquitoes:
+            title = f'{self.model_type} Model - Full System'
+        elif has_humans:
+            title = f'{self.model_type} Model - Human Dynamics (SIR)'
+        elif has_mosquitoes:
+            title = f'{self.model_type} Model - Mosquito Dynamics (SEI)'
+        else:
+            title = f'{self.model_type} Model Results'
+        
+        plt.title(title, fontsize=14)
+        plt.tight_layout()
         plt.show()
 
 __all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "SIRSEI"]
