@@ -10,6 +10,7 @@ import logging
 from collections import OrderedDict
 from typing import Any, Union
 import copy
+import matplotlib.pyplot as plt
 
 logging.basicConfig(filename="epimodels.log", filemode="w", level=logging.DEBUG)
 
@@ -1136,5 +1137,303 @@ class Dengue4Strain(ContinuousModel):
             sigma * (I_1234 + I_1243 + I_1342 + I_2341) - mu * R_1234,  # R_1234
         ]
 
+###################################################
 
-__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain"]
+### Malaria SIR/SEI model
+
+class SIRSEI(ContinuousModel):
+    """
+    SIR–SEI Vector-Borne Disease Model.
+
+    This base model is based on the paper 
+    'Modelling Climate Change and on Malaria Transmission (Parham and Michael, 2010)'
+    and inspired by the Trajetórias Project developed by SinBiose/CNPq.
+    
+    Further development will be done to include the effects of deforestation 
+    and forest fires on mosquito habitat and transmission dynamics.
+
+    Later versions of the model replaced the use of temperature and precipitation 
+    functions for real data from the Mosqlimate datastore.
+
+    Humans:
+        Sh : Susceptible Humans
+        Ih : Infectious Humans
+        Rh : Recovered Humans
+
+    Mosquitoes:
+        Sv : Susceptible Mosquitoes
+        Ev : Exposed Mosquitoes
+        Iv : Infectious Mosquitoes
+
+    Transmission:
+        Mosquito → Human: a * b2
+        Human → Mosquito: a * b1
+
+    Climate Forcing:
+        Temperature and rainfall drive mosquito demography and development rates.
+
+    Temperature forcing:
+        T(t) = T1 + T2 * cos(omega1 * t + phi1)
+
+    Rainfall forcing:
+        R(t) = R1 + R2 * cos(omega2 * t + phi2)
+
+    Basic Reproduction Number:
+
+        R0 = sqrt( (a² b1 b2 b3) / ((b3 + l + μ) γ μ) )
+
+    where:
+        a   : biting rate
+        b1  : human → mosquito transmission probability
+        b2  : mosquito → human transmission probability
+        b3  : mosquito incubation rate
+        μ  : mosquito mortality
+        l   : mosquito latent-stage mortality
+        γ   : human recovery rate
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        self.state_variables = OrderedDict({
+            "Sh": "Susceptible Humans",
+            "Ih": "Infectious Humans",
+            "Rh": "Recovered Humans",
+            "Sv": "Susceptible Mosquitoes",
+            "Ev": "Exposed Mosquitoes",
+            "Iv": "Infectious Mosquitoes",
+        })
+
+        self.parameters = OrderedDict({
+            "b1": r"$b_1$",
+            "b2": r"$b_2$",
+            "gamma": r"$\gamma$",
+            "mu_H": r"$\mu_H$",
+
+            "T1": r"$T_1$",
+            "T2": r"$T_2$",
+            "omega1": r"$\omega_1$",
+            "phi1": r"$\phi_1$",
+
+            "R1": r"$R_1$",
+            "R2": r"$R_2$",
+            "omega2": r"$\omega_2$",
+            "phi2": r"$\phi_2$",
+
+            "BE": r"$B_E$",
+            "pME": r"$p_{ME}$",
+            "pML": r"$p_{ML}$",
+            "pMP": r"$p_{MP}$",
+
+            "tauE": r"$\tau_E$",
+            "tauP": r"$\tau_P$",
+            "RL": r"$R_L$",
+
+            "DD": r"$DD$",
+            "Tmin": r"$T_{min}$",
+
+            "A": r"$A$",
+            "B": r"$B$",
+            "C": r"$C$",
+
+            "D1": r"$D_1$",
+            "c1": r"$c_1$",
+            "c2": r"$c_2$",
+
+            "T_prime": r"$T'$",
+        })
+
+        self.model_type = "SIR-SEI"
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+
+subgraph Humans
+Sh(S_h)
+Ih(I_h)
+Rh(R_h)
+end
+
+subgraph Mosquitoes
+Sv(S_v)
+Ev(E_v)
+Iv(I_v)
+end
+
+Iv -->|$$a b_2$$| Sh
+Sh -->|$$a b_2 I_v/N$$| Ih
+Ih -->|$$\gamma$$| Rh
+
+Ih -->|$$a b_1$$| Sv
+Sv -->|$$a b_1 I_h/N$$| Ev
+Ev -->|$$b_3$$| Iv
+"""
+
+    @property
+    def R0(self) -> float | None:
+        """
+        Basic reproduction number for the SIR-SEI model.
+
+        R0 = sqrt((a^2 * b1 * b2 * b3) / ((b3 + l + mu) * gamma * mu))
+
+        :return: Basic reproduction number, or None if parameters not set
+        """
+
+        if not self.param_values:
+            return None
+
+        p = self.param_values
+
+        required = ["b1", "b2", "gamma"]
+
+        if not all(k in p for k in required):
+            return None
+
+        # Use reference temperature for evaluation
+        T = p["T1"]
+
+        a = (T - p["T_prime"]) / p["D1"]
+        p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
+        mu = -np.log(p_survive)
+
+        tau_M = p["DD"] / (T - p["Tmin"])
+        b3 = 1 / tau_M
+
+        l = p_survive ** tau_M
+
+        return float(
+            np.sqrt(
+                (a**2 * p["b1"] * p["b2"] * b3)
+                /
+                ((b3 + l + mu) * p["gamma"] * mu)
+            )
+        )
+
+    def R0_t(self, t: float) -> float | None:
+        """
+        Time-dependent reproduction number based on climate forcing.
+        """
+
+        if not self.param_values:
+            return None
+
+        p = self.param_values
+
+        T = p["T1"] + p["T2"] * np.cos(p["omega1"] * t + p["phi1"])
+
+        a = (T - p["T_prime"]) / p["D1"]
+
+        p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
+
+        mu = -np.log(p_survive)
+
+        tau_M = p["DD"] / (T - p["Tmin"])
+        b3 = 1 / tau_M
+
+        l = p_survive ** tau_M
+
+        return float(
+            np.sqrt(
+                (a**2 * p["b1"] * p["b2"] * b3)
+                /
+                ((b3 + l + mu) * p["gamma"] * mu)
+            )
+        )
+
+    def _model(self, t: float, y: list[float], p: dict[str, float]) -> list[float]:
+
+        Sh, Ih, Rh, Sv, Ev, Iv = y
+
+        N = Sh + Ih + Rh
+
+        # Climate forcing
+        T = p["T1"] + p["T2"] * np.cos(p["omega1"] * t + p["phi1"])
+        R = p["R1"] + p["R2"] * np.cos(p["omega2"] * t + p["phi2"])
+
+        # Temperature dependent quantities
+        a = (T - p["T_prime"]) / p["D1"]
+
+        p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
+
+        mu = -np.log(p_survive)
+
+        tau_M = p["DD"] / (T - p["Tmin"])
+
+        b3 = 1 / tau_M
+
+        l = p_survive ** tau_M
+
+        tau_L = 1 / (p["c1"] * T + p["c2"])
+
+        # Rainfall dependent larval survival
+        pL_R = (4 * p["pML"] / p["RL"]**2) * R * (p["RL"] - R)
+        pL_R = max(pL_R, 0)
+
+        pL_T = np.exp(-(p["c1"] * T + p["c2"]))
+
+        p_L = pL_R * pL_T
+
+        # Mosquito birth rate
+        b = (
+            p["BE"]
+            * p["pME"]
+            * p_L
+            * p["pMP"]
+            / (p["tauE"] + tau_L + p["tauP"])
+        )
+
+        b1 = p["b1"]
+        b2 = p["b2"]
+        gamma = p["gamma"]
+
+        # Differential equations
+
+        dSh = p["mu_H"] * N - a * b2 * (Iv / N) * Sh
+        dIh = a * b2 * (Iv / N) * Sh - gamma * Ih
+        dRh = gamma * Ih
+
+        dSv = b - a * b1 * (Ih / N) * Sv - mu * Sv
+
+        dEv = (
+            a * b1 * (Ih / N) * Sv
+            - mu * Ev
+            - b3 * Ev
+            - l * Ev
+        )
+
+        dIv = b3 * Ev - mu * Iv
+
+        return [dSh, dIh, dRh, dSv, dEv, dIv]
+    
+    def plot_human_traces(self):
+        traces = self.traces  # this is a dict
+        t = range(len(next(iter(traces.values()))))  # generate time vector from length of any list
+
+        plt.figure()
+        plt.plot(t, traces["Sh"], label="Sh (Susceptible)")
+        plt.plot(t, traces["Ih"], label="Ih (Infectious)")
+        plt.plot(t, traces["Rh"], label="Rh (Recovered)")
+        plt.title("Human Dynamics (SIR)")
+        plt.xlabel("Time")
+        plt.ylabel("Population")
+        plt.legend()
+        plt.show()
+        
+
+    def plot_mosquito_traces(self):
+        traces = self.traces
+        t = range(len(next(iter(traces.values()))))  # same time vector
+
+        plt.figure()
+        plt.plot(t, traces["Sv"], label="Sv (Susceptible)")
+        plt.plot(t, traces["Ev"], label="Ev (Exposed)")
+        plt.plot(t, traces["Iv"], label="Iv (Infectious)")
+        plt.title("Mosquito Dynamics (SEI)")
+        plt.xlabel("Time")
+        plt.ylabel("Population")
+        plt.legend()
+        plt.show()
+
+__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "SIRSEI"]
