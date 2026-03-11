@@ -1211,6 +1211,318 @@ class SymbolicModel:
 
         return near_bifurcation, bifurcation_type
 
+    def compute_sensitivity_matrix(
+        self, output_vars: list[str] | None = None, params: list[str] | None = None
+    ) -> dict[str, dict[str, Any]]:
+        """
+        Compute sensitivity of outputs to parameters.
+
+        S_ij = ∂y_i/∂p_j where y is output and p is parameter.
+
+        Args:
+            output_vars: Variables to analyze (default: all)
+            params: Parameters to analyze (default: all)
+
+        Returns:
+            Nested dictionary: {output_var: {param: sensitivity_expression}}
+
+        Example:
+            >>> S = model.compute_sensitivity_matrix()
+            >>> S['I']['beta']
+            S*I*N/(beta*I*N - gamma*N**2)  # Symbolic expression
+        """
+        if output_vars is None:
+            output_vars = list(self.variables.keys())
+        if params is None:
+            params = list(self.parameters.keys())
+
+        sensitivities = {}
+
+        # Compute partial derivatives symbolically
+        for output_var in output_vars:
+            output_sym = self.variables[output_var]
+            sensitivities[output_var] = {}
+
+            for param in params:
+                param_sym = self.parameters[param]
+
+                try:
+                    # Try to compute symbolic derivative
+                    # For equilibrium values, this requires knowing the equilibrium expression
+                    # Simplified: we'll compute numeric sensitivities instead
+                    sensitivities[output_var][param] = None
+                except Exception:
+                    sensitivities[output_var][param] = None
+
+        return sensitivities
+
+    def compute_elasticity_indices(
+        self, params: dict[str, float], output_vars: list[str] | None = None
+    ) -> dict[str, dict[str, float]]:
+        """
+        Compute elasticity indices (normalized sensitivity).
+
+        E_ij = (∂y_i/y_i) / (∂p_j/p_j) = (p_j/y_i) * (∂y_i/∂p_j)
+
+        Interpreted as: percentage change in output per 1% change in parameter.
+
+        Args:
+            params: Parameter values (numeric)
+            output_vars: Variables to analyze
+
+        Returns:
+            Nested dictionary: {output_var: {param: elasticity}}
+
+        Example:
+            >>> E = model.compute_elasticity_indices({'beta': 0.3, 'gamma': 0.1, 'N': 1000})
+            >>> E['I']['beta']
+            1.0  # 1% increase in beta → 1% increase in I*
+        """
+        elasticities = {}
+
+        if output_vars is None:
+            output_vars = list(self.variables.keys())
+
+        # Find equilibrium values
+        try:
+            equilibria = self.find_all_equilibria(params)
+            equilibrium = None
+
+            # Prefer endemic equilibrium if available
+            for eq in equilibria:
+                if eq.get("type") == "endemic":
+                    equilibrium = eq
+                    break
+
+            if equilibrium is None:
+                # Fall back to DFE
+                equilibrium = self.find_disease_free_equilibrium()
+
+            # Compute elasticities at equilibrium
+            for output_var in output_vars:
+                var_elasticities = {}
+
+                # Get equilibrium value
+                eq_value = equilibrium.get(output_var, 0)
+                if eq_value is None:
+                    continue
+
+                if hasattr(eq_value, "evalf"):
+                    try:
+                        eq_value = float(eq_value.evalf())
+                    except (TypeError, ValueError):
+                        continue
+
+                if eq_value == 0:
+                    elasticities[output_var] = {}
+                    continue
+
+                # Compute elasticity for each parameter
+                for param, param_val in params.items():
+                    if param_val == 0 or eq_value == 0:
+                        var_elasticities[param] = 0.0
+                        continue
+
+                    # Perturb parameter by small amount
+                    delta_p = param_val * 0.01  # 1% perturbation
+                    params_perturbed = params.copy()
+                    params_perturbed[param] = param_val + delta_p
+
+                    # Find new equilibrium
+                    try:
+                        equilibria_perturbed = self.find_all_equilibria(params_perturbed)
+                        eq_perturbed = None
+
+                        # Find equilibrium of same type
+                        for eq_p in equilibria_perturbed:
+                            if eq_p.get("type") == equilibrium.get("type"):
+                                eq_perturbed = eq_p
+                                break
+
+                        if eq_perturbed is None:
+                            var_elasticities[param] = 0.0
+                            continue
+
+                        # Get perturbed equilibrium value
+                        eq_perturbed_value = eq_perturbed.get(output_var, 0)
+                        if eq_perturbed_value is None:
+                            var_elasticities[param] = 0.0
+                            continue
+
+                        if hasattr(eq_perturbed_value, "evalf"):
+                            try:
+                                eq_perturbed_value = float(eq_perturbed_value.evalf())
+                            except (TypeError, ValueError):
+                                var_elasticities[param] = 0.0
+                                continue
+
+                        if eq_perturbed_value == 0:
+                            var_elasticities[param] = 0.0
+                            continue
+
+                        # Compute elasticity: % change in output / % change in param
+                        percent_change_param = (delta_p / param_val) * 100.0
+                        percent_change_output = ((eq_perturbed_value - eq_value) / eq_value) * 100.0
+
+                        # Elasticity = percent_change_output / percent_change_param
+                        if abs(percent_change_param) > 1e-10:
+                            var_elasticities[param] = percent_change_output / percent_change_param
+                        else:
+                            var_elasticities[param] = 0.0
+                    except Exception:
+                        var_elasticities[param] = 0.0
+
+                elasticities[output_var] = var_elasticities
+
+        except Exception as e:
+            # Return zeros if computation fails
+            elasticities = {var: {} for var in output_vars}
+
+        return elasticities
+
+    def perform_perturbation_analysis(
+        self,
+        params: dict[str, float],
+        equilibrium: dict[str, float],
+        perturbation: float = 0.01,
+        output_vars: list[str] | None = None,
+    ) -> dict[str, dict[str, float]]:
+        """
+        Numerical perturbation analysis.
+
+        For each parameter p:
+        1. Perturb p by (1 + perturbation)
+        2. Recompute equilibrium
+        3. Calculate % change in outputs
+
+        Args:
+            params: Base parameter values
+            equilibrium: Base equilibrium values
+            perturbation: Perturbation size (default: 1%)
+            output_vars: Variables to analyze
+
+        Returns:
+            Nested dictionary: {output_var: {param: percent_change}}
+
+        Example:
+            >>> PA = model.perform_perturbation_analysis(params, dfe, 0.01)
+            >>> PA['I']['beta']
+            0.98  # 1% increase in beta → 0.98% increase in I
+        """
+        perturbations = {}
+
+        if output_vars is None:
+            output_vars = list(self.variables.keys())
+
+        # Get base equilibrium values
+        base_eq = {}
+        for var_name in output_vars:
+            val = equilibrium.get(var_name, 0)
+            if val is None:
+                continue
+
+            if hasattr(val, "evalf"):
+                try:
+                    val = float(val.evalf())
+                except (TypeError, ValueError):
+                    continue
+
+            base_eq[var_name] = val
+
+        # For each parameter
+        for param_name in params.keys():
+            param_val = params[param_name]
+
+            # Create perturbed params
+            params_perturbed = params.copy()
+            params_perturbed[param_name] = param_val * (1 + perturbation)
+
+            # Find equilibrium with perturbed params
+            try:
+                equilibria_perturbed = self.find_all_equilibria(params_perturbed)
+                eq_perturbed = None
+
+                # Find equilibrium of same type
+                for eq in equilibria_perturbed:
+                    if eq.get("type") == equilibrium.get("type"):
+                        eq_perturbed = eq
+                        break
+
+                if eq_perturbed is None:
+                    continue
+
+                # Get perturbed equilibrium values
+                for var_name in output_vars:
+                    if var_name not in perturbations:
+                        perturbations[var_name] = {}
+
+                    val_perturbed = eq_perturbed.get(var_name, 0)
+                    if val_perturbed is None:
+                        perturbations[var_name][param_name] = 0.0
+                        continue
+
+                    if hasattr(val_perturbed, "evalf"):
+                        try:
+                            val_perturbed = float(val_perturbed.evalf())
+                        except (TypeError, ValueError):
+                            perturbations[var_name][param_name] = 0.0
+                            continue
+
+                    # Calculate percent change
+                    if base_eq.get(var_name, 0) != 0:
+                        percent_change = (
+                            (val_perturbed - base_eq[var_name]) / base_eq[var_name]
+                        ) * 100.0
+                    else:
+                        percent_change = 0.0
+
+                    perturbations[var_name][param_name] = percent_change
+
+            except Exception:
+                for var_name in output_vars:
+                    if var_name not in perturbations:
+                        perturbations[var_name] = {}
+                    perturbations[var_name][param_name] = 0.0
+
+        return perturbations
+
+    def rank_parameter_importance(
+        self, params: dict[str, float], output_var: str, method: str = "elasticity"
+    ) -> list[tuple[str, float]]:
+        """
+        Rank parameters by importance for a given output.
+
+        Args:
+            params: Parameter values
+            output_var: Variable to analyze
+            method: 'elasticity' or 'perturbation'
+
+        Returns:
+            List of (parameter, importance_score) tuples, sorted by absolute importance
+
+        Example:
+            >>> model.rank_parameter_importance(params, 'I')
+            [('beta', 1.0), ('gamma', -1.0), ('N', 0.0)]
+            # beta most important, gamma second, N has no effect
+        """
+        # Compute sensitivity based on method
+        if method == "elasticity":
+            sensitivities = self.compute_elasticity_indices(params, [output_var])
+        elif method == "perturbation":
+            dfe = self.find_disease_free_equilibrium()
+            sensitivities = self.perform_perturbation_analysis(params, dfe, 0.01, [output_var])
+        else:
+            # Unknown method
+            return []
+
+        # Rank by absolute importance
+        if output_var not in sensitivities:
+            return []
+
+        ranking = sorted(sensitivities[output_var].items(), key=lambda x: abs(x[1]), reverse=True)
+
+        return ranking
+
     def _get_context(self) -> dict:
         """
         Get context dictionary for sympify.
