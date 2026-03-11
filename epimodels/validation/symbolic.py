@@ -754,10 +754,25 @@ class SymbolicModel:
                 val2 = existing_eq.get(var_name, 0)
 
                 # Convert to float for comparison
-                if hasattr(val1, "evalf"):
-                    val1 = float(val1.evalf())
-                if hasattr(val2, "evalf"):
-                    val2 = float(val2.evalf())
+                try:
+                    if hasattr(val1, "evalf"):
+                        val1 = float(val1.evalf())
+                    elif hasattr(val1, "__float__"):
+                        val1 = float(val1)
+                except (ValueError, TypeError):
+                    # Cannot convert to float, treat as different
+                    is_duplicate = False
+                    break
+
+                try:
+                    if hasattr(val2, "evalf"):
+                        val2 = float(val2.evalf())
+                    elif hasattr(val2, "__float__"):
+                        val2 = float(val2)
+                except (ValueError, TypeError):
+                    # Cannot convert to float, treat as different
+                    is_duplicate = False
+                    break
 
                 if abs(val1 - val2) > tolerance:
                     is_duplicate = False
