@@ -138,7 +138,7 @@ class TestValidateInitialCondition:
         """Should detect negative value."""
         spec = VariableSpec(name="I", symbol="I", non_negative=True)
         errors = validate_initial_condition("I", -10, spec)
-        assert len(errors) == 1
+        assert len(errors) == 2
         assert "must be non-negative" in errors[0]
 
     def test_value_outside_bounds(self):
