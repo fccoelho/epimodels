@@ -424,3 +424,13 @@ See inline documentation in:
 * ``epimodels/validation/validators.py`` - Validation functions
 * ``epimodels/validation/symbolic.py`` - Symbolic analysis
 * ``epimodels/__init__.py`` - BaseModel integration
+
+Additional Examples
+----------------
+
+For interactive demonstrations, see the Jupyter notebooks in the Examples directory:
+
+* **Validation_Framework.ipynb** - Rich parameter validation tutorial
+* **Advanced_Analytics.ipynb** - Symbolic analysis and equilibrium finding
+
+These notebooks provide step-by-step guides with executable code examples.
