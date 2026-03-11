@@ -45,6 +45,7 @@ Contents
    geting_started
    models
    solvers
+   validation_system
 
 .. toctree::
    :maxdepth: 2
