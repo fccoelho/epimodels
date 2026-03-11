@@ -37,6 +37,8 @@ dev = [
     "sphinxcontrib-mermaid>=1.0.0",
     "ipython>=9.11.0",
     "jupyter>=1.1.1",
+    "jupyterlab>=4.5.5",
+    "mermaid-python>=0.1",
     "lab>=8.9",
 ]
 
