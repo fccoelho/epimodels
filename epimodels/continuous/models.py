@@ -1192,8 +1192,8 @@ class SIR2Strain(ContinuousModel):
                 "I_2": "Infectious 2",
                 "R_1": "Removed 1",
                 "R_2": "Removed 2",
-                "S1": "Susceptible only 1",
-                "S2": "Susceptible only 2",
+                "S1": "Susceptible with a previous infection with strain 1, i.e., susceptible only to strain 2",
+                "S2": "Susceptible with a previous infection with strain 2, i.e., susceptible only to strain 1",
                 "I_12": "Infectious 1 after 2",
                 "I_21": "Infectious 2 after 1",
                 "R": "Removed 1 and 2"
