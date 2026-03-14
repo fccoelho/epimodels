@@ -1137,4 +1137,72 @@ class Dengue4Strain(ContinuousModel):
         ]
 
 
-__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain"]
+class NeipelHeterogeneousSIR(ContinuousModel):
+    """
+    Heterogeneous SIR model based on Neipel et al. (2020).
+
+    State Variables:
+        - I: Infectious individuals
+        - tau: epidemic progress variable
+
+    Derived quantities:
+        - S(t) = (N - I0) * (1 + tau/alpha)^(-alpha)
+        - R(t) = N - S(t) - I(t)
+
+    Parameters:
+        - beta: transmission rate
+        - gamma: recovery rate
+        - alpha: susceptibility heterogeneity exponent
+        - I0: initial number of infectious individuals
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict(
+            {"I": "Infectious", "tau": "Epidemic progress"}
+        )
+        self.parameters = OrderedDict(
+            {
+                "beta": r"$\beta$",
+                "gamma": r"$\gamma$",
+                "alpha": r"$\alpha$",
+                "I0": r"$I_0$",
+            }
+        )
+        self.model_type = "NeipelHeterogeneousSIR"
+
+    @property
+    def diagram(self) -> str:
+        return r"""flowchart LR
+
+S(Susceptible heterogeneous) -->|$$\beta, \alpha$$| I(Infectious)
+I -->|$$\gamma$$| R(Removed)
+"""
+
+    @property
+    def R0(self) -> float | None:
+        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
+            return float(self.param_values["beta"] / self.param_values["gamma"])
+        return None
+
+    def susceptible(self, tau: float, N: float, I0: float, alpha: float) -> float:
+        return (N - I0) * (1 + tau / alpha) ** (-alpha)
+
+    def removed(self, I: float, tau: float, N: float, I0: float, alpha: float) -> float:
+        S = self.susceptible(tau, N, I0, alpha)
+        return N - S - I
+
+    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
+        I, tau = y
+        beta = params["beta"]
+        gamma = params["gamma"]
+        alpha = params["alpha"]
+        I0 = params["I0"]
+        N = params["N"]
+
+        dI = I * beta * (1 - I0 / N) * (1 + tau / alpha) ** (-(alpha + 1)) - gamma * I
+        dtau = beta * I / N
+
+        return [dI, dtau]
+    
+__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "NeipelHeterogeneousSIR"]
