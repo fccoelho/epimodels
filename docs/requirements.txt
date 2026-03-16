@@ -1,3 +1,4 @@
 sphinx
 nbsphinx
 sphinxcontrib-mermaid
+sympy
