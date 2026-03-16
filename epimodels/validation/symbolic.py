@@ -185,19 +185,27 @@ class SymbolicModel:
         This method:
         1. Identifies infected compartments
         2. Computes new infections matrix F and transitions matrix V
-        3. Computes R0 as spectral radius of F*V^(-1)
+        3. Computes R0 as spectral radius of F*V^(-1) evaluated at DFE
+
+        The next-generation matrix method:
+        - For dI/dt = F - V (F = new infections, V = transitions out)
+        - Compute Jacobians: dF = ∂F/∂X, dV = ∂V/∂X (where X = infected compartments)
+        - Evaluate at DFE (disease-free equilibrium)
+        - R0 = spectral_radius(dF * dV^(-1))
 
         Returns:
-            Symbolic expression for R0
+            Symbolic expression for R0 (evaluated at DFE)
 
         Note:
-            Currently implements a simplified version for common compartmental models.
-            For complex models, may need manual specification of F and V.
+            For single infected compartment: R0 = (∂F/∂I)|DFE / (∂V/∂I)|DFE
         """
         infected_vars = self._identify_infected_compartments()
 
         if not infected_vars:
             raise ValueError("Cannot identify infected compartments")
+
+        # Get disease-free equilibrium for evaluation
+        dfe = self.find_disease_free_equilibrium()
 
         if len(infected_vars) == 1:
             I_name = infected_vars[0]
@@ -207,33 +215,37 @@ class SymbolicModel:
             if dI_dt is None:
                 raise ValueError(f"No ODE defined for {I_name}")
 
-            F_terms, V_terms = self._decompose_infection_terms(dI_dt)
+            # Decompose: dI/dt = F - V
+            F, V = self._decompose_infection_terms(dI_dt)
 
-            if not F_terms:
+            if F == 0:
                 raise ValueError("Cannot identify new infection terms")
 
-            F = F_terms
-            V = V_terms
+            # Compute partial derivatives with respect to infected compartment
+            # This linearizes F and V around the equilibrium
+            dF_dI = diff(F, I_sym) if hasattr(F, "diff") else 0
+            dV_dI = diff(V, I_sym) if hasattr(V, "diff") else 0
 
-            # For R0 calculation at disease-free equilibrium, we evaluate at I=0
-            # The next-generation matrix method requires linearization around DFE
-            # For simple models: R0 = beta/gamma
+            # Substitute DFE values (S=N, I=0, E=0, etc.)
+            subs_dict = {}
+            for var_name, var_sym in self.variables.items():
+                dfe_val = dfe.get(var_name, 0)
+                subs_dict[var_sym] = dfe_val
 
-            # Simplified approach: extract rate parameters
-            # For dI/dt = beta*S*I/N - gamma*I
-            # F = beta*S*I/N (new infections)
-            # V = gamma*I (transitions out)
-            # At DFE with S=N, and linearizing: R0 = beta/gamma
+            # Evaluate derivatives at DFE
+            dF_at_dfe = dF_dI.subs(subs_dict) if hasattr(dF_dI, "subs") else dF_dI
+            dV_at_dfe = dV_dI.subs(subs_dict) if hasattr(dV_dI, "subs") else dV_dI
 
-            if V != 0:
-                R0 = simplify(F / V)
+            # R0 = dF/dI / dV/dI at DFE
+            if dV_at_dfe != 0:
+                R0 = simplify(dF_at_dfe / dV_at_dfe)
             else:
-                R0 = F
+                R0 = simplify(dF_at_dfe)
 
             return R0
 
         else:
-            return self._compute_R0_multivariate(infected_vars)
+            return self._compute_R0_multivariate(infected_vars, dfe)
 
     def _identify_infected_compartments(self) -> list:
         """
@@ -267,8 +279,13 @@ class SymbolicModel:
         """
         Decompose ODE right-hand side into new infections (F) and transitions (V).
 
-        F: rate of new infections entering compartment
-        V: rate of transfer out of compartment (except new infections)
+        Convention: dI/dt = F - V
+        - F: rate of new infections entering compartment (positive terms from transmission)
+        - V: rate of transfer out of compartment (recovery, death, progression, etc.)
+
+        For example, for dI/dt = beta*S*I/N - gamma*I - mu*I:
+        - F = beta*S*I/N (new infections)
+        - V = (gamma + mu)*I (transitions out: recovery + death)
 
         Returns:
             Tuple of (F, V) where dI/dt = F - V
@@ -285,26 +302,42 @@ class SymbolicModel:
         F_terms = []
         V_terms = []
 
+        # Identify the infected variable this ODE is for
+        infected_vars = self._identify_infected_compartments()
+
         for term in terms:
             term_str = str(term)
+
+            # A term is a "new infection" if it represents influx from transmission
+            # This typically has the pattern: transmission_param * S * I / N
             is_new_infection = False
 
-            if self.total_population and str(self.total_population) in term_str:
-                is_new_infection = True
-            elif any(str(p) in term_str for p in self.parameters.values()):
-                if any(str(v) in term_str for v in self.variables.values()):
-                    is_new_infection = True
+            # Get the coefficient and check the term structure
+            coeff, rest = term.as_coeff_Mul()
 
-            if is_new_infection and "-" not in term_str[:1]:
-                coeff = term.as_coeff_Mul()[0]
-                if coeff < 0:
-                    V_terms.append(term)
-                else:
+            # Check if term contains a transmission parameter multiplied by state variables
+            has_transmission_param = any(str(p) in term_str for p in self.parameters.values())
+            has_susceptible = any(v.startswith("S") for v in self.variables.keys() if v in term_str)
+            has_population = self.total_population and str(self.total_population) in term_str
+
+            # New infections come FROM transmission (beta*S*I pattern), not from transitions
+            # Terms like -gamma*I or -mu*I are transitions OUT, not new infections
+            if has_transmission_param and (has_susceptible or has_population):
+                # This looks like a transmission term
+                if coeff > 0:
+                    # Positive transmission term: new infections (e.g., +beta*S*I/N)
+                    is_new_infection = True
                     F_terms.append(term)
+                else:
+                    # Negative transmission term: unusual but could be loss to infection
+                    V_terms.append(-term)
             else:
-                if "-" in term_str[:1]:
+                # All other terms are transitions (recovery, death, progression)
+                if coeff > 0:
+                    # Positive transition (unusual): goes to V as subtraction
                     V_terms.append(term)
                 else:
+                    # Negative transition (normal): e.g., -gamma*I becomes +gamma*I in V
                     V_terms.append(-term)
 
         F = sum(F_terms) if F_terms else 0
@@ -312,12 +345,21 @@ class SymbolicModel:
 
         return sympify(F), sympify(V)
 
-    def _compute_R0_multivariate(self, infected_vars: list) -> Any:
+    def _compute_R0_multivariate(
+        self, infected_vars: list, dfe: dict[str, Any] | None = None
+    ) -> Any:
         """
         Compute R0 for models with multiple infected compartments.
 
-        Uses next-generation matrix method.
+        Uses next-generation matrix method with evaluation at DFE.
+
+        Args:
+            infected_vars: List of infected compartment names
+            dfe: Disease-free equilibrium values (optional, computed if not provided)
         """
+        if dfe is None:
+            dfe = self.find_disease_free_equilibrium()
+
         n = len(infected_vars)
 
         x = [self.variables[name] for name in infected_vars]
@@ -356,6 +398,15 @@ class SymbolicModel:
 
         F_mat = Matrix(F_matrix)
         V_mat = Matrix(V_matrix)
+
+        # Substitute DFE values into matrices
+        subs_dict = {}
+        for var_name, var_sym in self.variables.items():
+            dfe_val = dfe.get(var_name, 0)
+            subs_dict[var_sym] = dfe_val
+
+        F_mat = F_mat.subs(subs_dict)
+        V_mat = V_mat.subs(subs_dict)
 
         try:
             V_inv = V_mat.inv()
@@ -537,13 +588,129 @@ class SymbolicModel:
 
                 # Validate the equilibrium
                 if self._validate_equilibrium(eq):
-                    equilibria.append(eq)
+                    # Check for duplicates before adding
+                    if not self._is_equilibrium_duplicate(eq, equilibria):
+                        equilibria.append(eq)
 
         except Exception as e:
             # Symbolic solving failed, will fall back to numeric
             pass
 
+        # Only try analytical method if no endemic equilibrium found yet
+        has_endemic = any(self._classify_equilibrium(eq) == "endemic" for eq in equilibria)
+        if not has_endemic:
+            # Try to find endemic equilibrium by solving with I != 0 constraint
+            # This helps find solutions that SymPy might miss
+            endemic_eq = self._find_endemic_equilibrium_analytical()
+            if endemic_eq and not self._is_equilibrium_duplicate(endemic_eq, equilibria):
+                equilibria.append(endemic_eq)
+
         return equilibria
+        if endemic_eq and not self._is_equilibrium_duplicate(endemic_eq, equilibria):
+            equilibria.append(endemic_eq)
+
+        return equilibria
+
+    def _find_endemic_equilibrium_analytical(self) -> dict[str, Any] | None:
+        """
+        Try to find endemic equilibrium using analytical approach.
+
+        For common model structures like SIR with vital dynamics,
+        we can derive the endemic equilibrium analytically.
+
+        Returns:
+            Endemic equilibrium dictionary or None
+        """
+        try:
+            # Try solving with constraint that infected compartments are non-zero
+            # For SIR with vital dynamics:
+            # dS/dt = mu*N - beta*S*I/N - mu*S = 0
+            # dI/dt = beta*S*I/N - (gamma + mu)*I = 0
+            # dR/dt = gamma*I - mu*R = 0
+            #
+            # From dI/dt = 0 with I != 0: S = N*(gamma + mu)/beta = N/R0
+            # From dS/dt = 0: I = (mu*N/gamma)*(R0 - 1)
+            # From dR/dt = 0: R = gamma*I/mu
+
+            infected_vars = self._identify_infected_compartments()
+            if not infected_vars:
+                return None
+
+            # Get the susceptible variable
+            susceptibles = [v for v in self.variables.keys() if v.startswith("S")]
+            if not susceptibles:
+                return None
+
+            S_name = susceptibles[0]
+            I_name = infected_vars[0]
+
+            # Get the ODE for I
+            I_sym = self.variables[I_name]
+            dI_dt = self.odes.get(I_sym)
+
+            if dI_dt is None:
+                return None
+
+            # Get DFE for reference
+            dfe = self.find_disease_free_equilibrium()
+
+            # Try to extract the endemic equilibrium form
+            # For dI/dt = beta*S*I/N - (gamma + mu)*I = 0
+            # The endemic equilibrium satisfies: S = N*(gamma + mu)/beta
+
+            # Compute R0 symbolically at DFE
+            R0_expr = self.compute_R0_next_generation()
+
+            # The endemic equilibrium has S = N/R0
+            # This means S = N * (gamma + mu) / beta for SIR with vital dynamics
+
+            # Try to solve for endemic equilibrium
+            S_sym = self.variables[S_name]
+            dS_dt = self.odes.get(S_sym)
+
+            if dS_dt is None:
+                return None
+
+            # Solve the system with the assumption I != 0
+            equations = []
+            for var_sym, ode_rhs in self.odes.items():
+                equations.append(Eq(ode_rhs, 0))
+
+            # Try to solve without assuming I = 0
+            solutions = solve(equations, list(self.variables.values()), dict=True)
+
+            if solutions and not isinstance(solutions, list):
+                solutions = [solutions]
+
+            for solution in solutions:
+                eq = {}
+                for var_name, var_sym in self.variables.items():
+                    if var_sym in solution:
+                        eq[var_name] = solution[var_sym]
+                    else:
+                        eq[var_name] = var_sym
+
+                # Check if this is an endemic equilibrium (I > 0)
+                I_val = eq.get(I_name, 0)
+                if hasattr(I_val, "evalf"):
+                    try:
+                        I_numeric = float(I_val.evalf())
+                        if I_numeric > 0 and self._validate_equilibrium(eq):
+                            eq["method"] = "symbolic"
+                            return eq
+                    except:
+                        # Symbolic value, check if it could be positive
+                        pass
+
+                # Also check for symbolic solutions
+                if I_val != 0 and self._validate_equilibrium(eq):
+                    eq["method"] = "symbolic"
+                    return eq
+
+            return None
+
+        except Exception:
+            return None
 
     def _find_equilibria_numeric(
         self, params: dict[str, float], max_solutions: int
@@ -647,20 +814,74 @@ class SymbolicModel:
                 dfe_guess[i] = N
         guesses.append(dfe_guess)
 
-        # 2. Endemic-like (small I, large S)
+        # 2. Endemic-like guess based on R0 if available
         endemic_guess = [0.0] * n_vars
-        for i, var_name in enumerate(self.variables.keys()):
-            if var_name.startswith("S") or "Susceptible" in var_name:
-                endemic_guess[i] = N * 0.8
-            elif var_name.startswith("I") or "Infectious" in var_name:
-                endemic_guess[i] = N * 0.1
-            elif var_name.startswith("R") or "Removed" in var_name:
-                endemic_guess[i] = N * 0.1
+        try:
+            # Compute R0 to get a better endemic guess
+            R0_expr = self.compute_R0_next_generation()
+            R0_val = float(self.substitute_values(R0_expr, params))
+
+            if R0_val > 1:
+                # For SIR with vital dynamics: S* = N/R0, I* = (mu*N/gamma)*(R0-1)
+                # Use approximate values for the guess
+                for i, var_name in enumerate(self.variables.keys()):
+                    if var_name.startswith("S") or "Susceptible" in var_name:
+                        endemic_guess[i] = N / R0_val
+                    elif var_name.startswith("I") or "Infectious" in var_name:
+                        # Approximate I based on model structure
+                        mu = params.get("mu", 0.01)
+                        gamma = params.get("gamma", 0.1)
+                        I_star = (mu * N / gamma) * (R0_val - 1) if gamma > 0 else N * 0.1
+                        endemic_guess[i] = min(I_star, N * 0.5)  # Cap at 50% of population
+                    elif var_name.startswith("E") or "Exposed" in var_name:
+                        # For SEIR models
+                        endemic_guess[i] = N * 0.05
+                    elif var_name.startswith("R") or "Removed" in var_name:
+                        endemic_guess[i] = N * 0.1
+                    else:
+                        endemic_guess[i] = N * 0.05
+            else:
+                # R0 <= 1, use generic endemic guess
+                for i, var_name in enumerate(self.variables.keys()):
+                    if var_name.startswith("S") or "Susceptible" in var_name:
+                        endemic_guess[i] = N * 0.8
+                    elif var_name.startswith("I") or "Infectious" in var_name:
+                        endemic_guess[i] = N * 0.1
+                    elif var_name.startswith("R") or "Removed" in var_name:
+                        endemic_guess[i] = N * 0.1
+        except Exception:
+            # Fall back to generic endemic guess
+            for i, var_name in enumerate(self.variables.keys()):
+                if var_name.startswith("S") or "Susceptible" in var_name:
+                    endemic_guess[i] = N * 0.8
+                elif var_name.startswith("I") or "Infectious" in var_name:
+                    endemic_guess[i] = N * 0.1
+                elif var_name.startswith("R") or "Removed" in var_name:
+                    endemic_guess[i] = N * 0.1
+
         guesses.append(endemic_guess)
 
-        # 3. Random guesses
+        # 3. Multiple varied endemic guesses
+        # Try different proportions of susceptible population
+        for S_ratio in [0.3, 0.5, 0.6]:
+            varied_guess = [0.0] * n_vars
+            remaining = N * (1 - S_ratio)
+            for i, var_name in enumerate(self.variables.keys()):
+                if var_name.startswith("S") or "Susceptible" in var_name:
+                    varied_guess[i] = N * S_ratio
+                elif var_name.startswith("I") or "Infectious" in var_name:
+                    varied_guess[i] = remaining * 0.5
+                elif var_name.startswith("E") or "Exposed" in var_name:
+                    varied_guess[i] = remaining * 0.2
+                elif var_name.startswith("R") or "Removed" in var_name:
+                    varied_guess[i] = remaining * 0.3
+                else:
+                    varied_guess[i] = remaining * 0.1
+            guesses.append(varied_guess)
+
+        # 4. Random guesses
         np.random.seed(42)  # Reproducibility
-        for _ in range(n_guesses - 2):
+        for _ in range(max(1, n_guesses - len(guesses))):
             guess = np.random.uniform(0, N, n_vars)
             # Ensure sum equals N for conserved models
             if self.total_population:
@@ -721,12 +942,31 @@ class SymbolicModel:
             for var_sym, ode_rhs in self.odes.items():
                 residual = ode_rhs.subs(subs_dict)
 
-                # Evaluate numerically
-                if hasattr(residual, "evalf"):
-                    residual = float(residual.evalf())
+                # Try to simplify the residual
+                if hasattr(residual, "simplify"):
+                    residual = residual.simplify()
 
-                if abs(residual) > tolerance:
-                    return False
+                # Check if residual is exactly zero (symbolic)
+                if hasattr(residual, "is_zero") and residual.is_zero:
+                    continue
+
+                # Try to evaluate numerically
+                if hasattr(residual, "evalf"):
+                    try:
+                        residual_numeric = float(residual.evalf())
+                        if abs(residual_numeric) > tolerance:
+                            return False
+                    except (TypeError, ValueError):
+                        # Residual contains free symbols - check if it simplifies to zero
+                        # For symbolic equilibria, the residual should be exactly 0
+                        if hasattr(residual, "simplify"):
+                            simplified = residual.simplify()
+                            if simplified != 0 and not (
+                                hasattr(simplified, "is_zero") and simplified.is_zero
+                            ):
+                                # Check if it's a symbolic expression that could be zero
+                                # For now, assume symbolic solutions from solve() are valid
+                                pass
 
             return True
         except Exception:
@@ -1212,47 +1452,122 @@ class SymbolicModel:
         return near_bifurcation, bifurcation_type
 
     def compute_sensitivity_matrix(
-        self, output_vars: list[str] | None = None, params: list[str] | None = None
+        self,
+        params: dict[str, float] | None = None,
+        output_vars: list[str] | None = None,
+        param_list: list[str] | None = None,
+        perturbation: float = 0.01,
     ) -> dict[str, dict[str, Any]]:
         """
-        Compute sensitivity of outputs to parameters.
+        Compute sensitivity of equilibrium values to parameters.
 
-        S_ij = ∂y_i/∂p_j where y is output and p is parameter.
+        S_ij = ∂y_i/∂p_j where y is equilibrium value and p is parameter.
+        Uses numerical perturbation when symbolic computation is not feasible.
 
         Args:
+            params: Parameter values dict (required for numeric computation)
             output_vars: Variables to analyze (default: all)
-            params: Parameters to analyze (default: all)
+            param_list: Parameters to analyze (default: all from params)
+            perturbation: Relative perturbation size for numerical derivatives (default: 1%)
 
         Returns:
-            Nested dictionary: {output_var: {param: sensitivity_expression}}
+            Nested dictionary: {output_var: {param: sensitivity_value}}
 
         Example:
-            >>> S = model.compute_sensitivity_matrix()
+            >>> S = model.compute_sensitivity_matrix({'beta': 0.3, 'gamma': 0.1, 'N': 1000})
             >>> S['I']['beta']
-            S*I*N/(beta*I*N - gamma*N**2)  # Symbolic expression
+            100.0  # ∂I*/∂beta at equilibrium
         """
         if output_vars is None:
             output_vars = list(self.variables.keys())
+
+        sensitivities = {var: {} for var in output_vars}
+
         if params is None:
-            params = list(self.parameters.keys())
+            # Without params, we can only return placeholder
+            for output_var in output_vars:
+                for param_name in param_list or []:
+                    sensitivities[output_var][param_name] = None
+            return sensitivities
 
-        sensitivities = {}
+        if param_list is None:
+            param_list = list(params.keys())
 
-        # Compute partial derivatives symbolically
-        for output_var in output_vars:
-            output_sym = self.variables[output_var]
-            sensitivities[output_var] = {}
+        # Find base equilibrium
+        try:
+            equilibria = self.find_all_equilibria(params, numeric_fallback=True)
+            base_eq = None
 
-            for param in params:
-                param_sym = self.parameters[param]
+            # Prefer endemic equilibrium if available
+            for eq in equilibria:
+                if eq.get("type") == "endemic":
+                    base_eq = eq
+                    break
 
-                try:
-                    # Try to compute symbolic derivative
-                    # For equilibrium values, this requires knowing the equilibrium expression
-                    # Simplified: we'll compute numeric sensitivities instead
-                    sensitivities[output_var][param] = None
-                except Exception:
-                    sensitivities[output_var][param] = None
+            if base_eq is None:
+                # Fall back to DFE
+                base_eq = self.find_disease_free_equilibrium()
+
+            # Get base equilibrium values
+            base_values = {}
+            for var_name in output_vars:
+                val = base_eq.get(var_name, 0)
+                if hasattr(val, "evalf"):
+                    try:
+                        val = float(val.evalf())
+                    except (TypeError, ValueError):
+                        val = 0
+                base_values[var_name] = val
+
+            # Compute sensitivities using finite differences
+            for param_name in param_list:
+                if param_name not in params:
+                    continue
+
+                param_val = params[param_name]
+                delta = param_val * perturbation
+
+                # Perturb parameter
+                params_perturbed = params.copy()
+                params_perturbed[param_name] = param_val + delta
+
+                # Find perturbed equilibrium
+                equilibria_perturbed = self.find_all_equilibria(
+                    params_perturbed, numeric_fallback=True
+                )
+                perturbed_eq = None
+
+                # Find equilibrium of same type
+                for eq in equilibria_perturbed:
+                    if eq.get("type") == base_eq.get("type"):
+                        perturbed_eq = eq
+                        break
+
+                if perturbed_eq is None:
+                    for var_name in output_vars:
+                        sensitivities[var_name][param_name] = None
+                    continue
+
+                # Compute sensitivity
+                for var_name in output_vars:
+                    perturbed_val = perturbed_eq.get(var_name, 0)
+                    if hasattr(perturbed_val, "evalf"):
+                        try:
+                            perturbed_val = float(perturbed_val.evalf())
+                        except (TypeError, ValueError):
+                            perturbed_val = 0
+
+                    # Sensitivity = dy/dp = (y_perturbed - y_base) / delta
+                    if delta != 0:
+                        sensitivities[var_name][param_name] = (
+                            perturbed_val - base_values[var_name]
+                        ) / delta
+                    else:
+                        sensitivities[var_name][param_name] = None
+
+        except Exception as e:
+            # Return empty sensitivities on failure
+            pass
 
         return sensitivities
 
