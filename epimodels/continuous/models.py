@@ -19,11 +19,14 @@ class ContinuousModel(BaseModel):
     Exposes a library of continuous time population models
     """
 
+    _formulas: dict[str, Any] | None
+
     def __init__(self) -> None:
         """
         Base class for Continuous models
         """
         super().__init__()
+        self._formulas = None
 
     def __call__(
         self,
@@ -99,6 +102,101 @@ class ContinuousModel(BaseModel):
 
         sol = self.solver.solve(fn, tuple(trange), inits, **kwargs)
         return sol
+
+    @property
+    def formulas(self) -> dict[str, Any] | None:
+        """
+        Symbolic formulas for state variable derivatives.
+
+        Subclasses can override by setting _formulas attribute for cases
+        where automatic extraction fails.
+
+        Returns:
+            Dict mapping state variable names to SymPy expressions,
+            or None if not available.
+        """
+        if hasattr(self, "_formulas") and self._formulas is not None:
+            return self._formulas
+        return None
+
+    def get_formulas(self) -> dict[str, Any]:
+        """
+        Get formulas for state variable derivatives.
+
+        Attempts automatic extraction first, falls back to manual _formulas.
+
+        Returns:
+            Dict mapping state variable names to SymPy expressions
+
+        Raises:
+            FormulaExtractionError: If extraction fails and no manual override
+        """
+        # Check for manual override first
+        if self.formulas is not None:
+            self._validate_formulas(self.formulas)
+            return self.formulas
+
+        # Attempt automatic extraction
+        from epimodels.formulas import extract_formulas
+
+        return extract_formulas(self)
+
+    def _validate_formulas(self, formulas: dict) -> None:
+        """Validate manually defined formulas."""
+        from sympy import Expr
+
+        missing_states = set(self.state_variables) - set(formulas)
+        if missing_states:
+            raise ValueError(f"Formulas missing for state variables: {missing_states}")
+
+        for name, expr in formulas.items():
+            if not isinstance(expr, (Expr, int, float)):
+                raise TypeError(
+                    f"Formula for '{name}' must be a SymPy expression, "
+                    f"got {type(expr).__name__}"
+                )
+
+    def to_vfgen(
+        self,
+        filepath: str | None = None,
+        default_values: dict[str, float] | None = None,
+        initial_conditions: dict[str, float] | None = None,
+        population: float | None = None,
+        **kwargs,
+    ) -> str | None:
+        """
+        Export the model to vfgen XML format.
+
+        Args:
+            filepath: Optional path to write XML file. If None, returns XML string.
+            default_values: Parameter default values. Uses model.param_values if None.
+            initial_conditions: Initial conditions for state variables.
+            population: Total population N value.
+            **kwargs: Additional arguments passed to VFGenExporter.export()
+
+        Returns:
+            XML string if filepath is None, otherwise None (writes to file)
+
+        Raises:
+            FormulaExtractionError: If formula extraction fails
+
+        Example:
+            >>> model = SIR()
+            >>> model.param_values = {'beta': 0.3, 'gamma': 0.1}
+            >>> xml = model.to_vfgen(
+            ...     initial_conditions={'S': 990, 'I': 10, 'R': 0},
+            ...     population=1000
+            ... )
+        """
+        from epimodels.exporters import VFGenExporter
+
+        return VFGenExporter(self).export(
+            filepath=filepath,
+            default_values=default_values,
+            initial_conditions=initial_conditions,
+            population=population,
+            **kwargs,
+        )
 
 
 class SIR(ContinuousModel):
@@ -199,7 +297,6 @@ I -->|$$\gamma$$| R(Recovered)
         return None
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
-
         N = params["N"]
         R = y[0]
         R0, gamma, S0 = params["R0"], params["gamma"], params["S0"]

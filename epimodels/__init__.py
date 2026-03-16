@@ -12,6 +12,30 @@ class ValidationError(Exception):
     pass
 
 
+class FormulaExtractionError(Exception):
+    """
+    Raised when automatic formula extraction fails for a ContinuousModel.
+
+    This typically occurs when the model's _model method uses constructs
+    that cannot be symbolically executed (e.g., loops, conditionals).
+
+    Attributes:
+        model_name: Name of the model that failed extraction
+        reason: Description of why extraction failed
+        suggestion: Suggested fix for the user
+    """
+
+    def __init__(self, model_name: str, reason: str, suggestion: str = ""):
+        self.model_name = model_name
+        self.reason = reason
+        self.suggestion = suggestion
+
+        message = f"Cannot extract formulas from {model_name}: {reason}"
+        if suggestion:
+            message += f"\n{suggestion}"
+        super().__init__(message)
+
+
 try:
     dist_name = __name__
     __version__ = version(dist_name)
