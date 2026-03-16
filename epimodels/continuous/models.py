@@ -1287,29 +1287,76 @@ class SIRSEI(ContinuousModel):
         μ  : mosquito mortality
         l   : mosquito latent-stage mortality
         γ   : human recovery rate
+        """
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict({
+            "Sh": "Susceptible Humans",
+            "Ih": "Infectious Humans",
+            "Rh": "Recovered Humans",
+            "Sv": "Susceptible Mosquitoes",
+            "Ev": "Exposed Mosquitoes",
+            "Iv": "Infectious Mosquitoes",
+        })
+        self.parameters = OrderedDict({
+            "b1": r"$b_1$",
+            "b2": r"$b_2$",
+            "gamma": r"$\gamma$",
+            "mu_H": r"$\mu_H$",
+            "T1": r"$T_1$",
+            "T2": r"$T_2$",
+            "omega1": r"$\omega_1$",
+            "phi1": r"$\phi_1$",
+            "R1": r"$R_1$",
+            "R2": r"$R_2$",
+            "omega2": r"$\omega_2$",
+            "phi2": r"$\phi_2$",
+            "BE": r"$B_E$",
+            "pME": r"$p_{ME}$",
+            "pML": r"$p_{ML}$",
+            "pMP": r"$p_{MP}$",
+            "tauE": r"$\tau_E$",
+            "tauP": r"$\tau_P$",
+            "RL": r"$R_L$",
+            "DD": r"$DD$",
+            "Tmin": r"$T_{min}$",
+            "A": r"$A$",
+            "B": r"$B$",
+            "C": r"$C$",
+            "D1": r"$D_1$",
+            "c1": r"$c_1$",
+            "c2": r"$c_2$",
+            "T_prime": r"$T'$",
+        })
+        self.model_type = "SIR-SEI"
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
         subgraph Humans
-Sh(S_h)
-Ih(I_h)
-Rh(R_h)
-end
+        Sh(S_h)
+        Ih(I_h)
+        Rh(R_h)
+        end
 
-subgraph Mosquitoes
-Sv(S_v)
-Ev(E_v)
-Iv(I_v)
-end
+        subgraph Mosquitoes
+        Sv(S_v)
+        Ev(E_v)
+        Iv(I_v)
+        end
 
-Iv -->|$$a b_2$$| Sh
-Sh -->|$$a b_2 I_v/N$$| Ih
-Ih -->|$$\gamma$$| Rh
+        Iv -->|$$a b_2$$| Sh
+        Sh -->|$$a b_2 I_v/N$$| Ih
+        Ih -->|$$\gamma$$| Rh
 
-Ih -->|$$a b_1$$| Sv
-Sv -->|$$a b_1 I_h/N$$| Ev
-Ev -->|$$b_3$$| Iv
-"""
+        Ih -->|$$a b_1$$| Sv
+        Sv -->|$$a b_1 I_h/N$$| Ev
+        Ev -->|$$b_3$$| Iv
+        """
 
-  @property
-  def R0(self) -> float | None:
+
+    @property
+    def R0(self) -> float | None:
       """
       Basic reproduction number for the SIR-SEI model.
 
@@ -1443,11 +1490,11 @@ Ev -->|$$b_3$$| Iv
         dIv = b3 * Ev - mu * Iv
 
         return [dSh, dIh, dRh, dSv, dEv, dIv]
-    
+
     def plot(self, compartments=None, figsize=(12, 6)):
         """
         Plot selected compartments with proper time axis.
-        
+
         Parameters:
         -----------
         compartments : list, optional
@@ -1458,31 +1505,31 @@ Ev -->|$$b_3$$| Iv
         if not self.traces or "time" not in self.traces:
             print("No data available. Run the model first with: model(inits, trange, totpop, params)")
             return
-        
+
         t = self.traces["time"]
-        
+
         if compartments is None:
             # Plot all compartments except 'time'
             compartments = [k for k in self.traces.keys() if k != "time"]
-        
+
         plt.figure(figsize=figsize)
         for comp in compartments:
             if comp in self.traces:
                 plt.plot(t, self.traces[comp], label=comp, linewidth=2)
-        
+
         plt.grid(True, alpha=0.3)
         plt.legend(fontsize=10)
         plt.xlabel('Time (days)', fontsize=12)
         plt.ylabel('Population', fontsize=12)
-        
+
         # Smart title based on which compartments are being plotted
         human_comps = ['Sh', 'Ih', 'Rh']
         mosquito_comps = ['Sv', 'Ev', 'Iv']
-        
+
         # Check what we're plotting
         has_humans = any(comp in human_comps for comp in compartments)
         has_mosquitoes = any(comp in mosquito_comps for comp in compartments)
-        
+
         if has_humans and has_mosquitoes:
             title = f'{self.model_type} Model - Full System'
         elif has_humans:
@@ -1491,7 +1538,7 @@ Ev -->|$$b_3$$| Iv
             title = f'{self.model_type} Model - Mosquito Dynamics (SEI)'
         else:
             title = f'{self.model_type} Model Results'
-        
+
         plt.title(title, fontsize=14)
         plt.tight_layout()
         plt.show()
