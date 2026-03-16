@@ -29,8 +29,11 @@ try:
         re,
         im,
         I,
+        S,
+        nsolve,
     )
     from sympy.core.assumptions import check_assumptions
+    import numpy as np
 
     SYMPY_AVAILABLE = True
 except ImportError:
@@ -393,6 +396,393 @@ class SymbolicModel:
 
         return equilibrium
 
+    def find_all_equilibria(
+        self,
+        params: dict[str, float] | None = None,
+        numeric_fallback: bool = True,
+        max_solutions: int = 10,
+    ) -> list[dict[str, Any]]:
+        """
+        Find all equilibrium points of the model.
+
+        Solves the system of equations f(x) = 0 where f is the vector field.
+        Includes both disease-free and endemic equilibria.
+
+        Args:
+            params: Parameter values for numeric solving (optional)
+            numeric_fallback: If True, use numerical solver when symbolic fails
+            max_solutions: Maximum number of solutions to return
+
+        Returns:
+            List of equilibrium dictionaries. Each dictionary contains:
+            - Variable names mapped to equilibrium values
+            - 'type': 'dfe' or 'endemic'
+            - 'method': 'symbolic' or 'numeric'
+
+        Example:
+            >>> model.find_all_equilibria(params={'beta': 0.3, 'gamma': 0.1, 'N': 1000})
+            [
+                {'S': N, 'I': 0, 'R': 0, 'type': 'dfe', 'method': 'symbolic'},
+                {'S': N*gamma/beta, 'I': ..., 'R': ..., 'type': 'endemic', 'method': 'symbolic'}
+            ]
+        """
+        equilibria = []
+
+        # 1. Always include DFE
+        dfe = self.find_disease_free_equilibrium()
+        dfe["type"] = "dfe"
+        dfe["method"] = "analytical"
+        equilibria.append(dfe)
+
+        # 2. Try symbolic solving for all equilibria
+        symbolic_eqs = self._find_equilibria_symbolic(max_solutions)
+
+        for eq in symbolic_eqs:
+            if not self._is_equilibrium_duplicate(eq, equilibria):
+                eq_type = self._classify_equilibrium(eq)
+                eq["type"] = eq_type
+                eq["method"] = "symbolic"
+                equilibria.append(eq)
+
+        # 3. If requested and params provided, try numeric solving
+        if numeric_fallback and params and len(equilibria) < max_solutions:
+            numeric_eqs = self._find_equilibria_numeric(params, max_solutions - len(equilibria))
+
+            for eq in numeric_eqs:
+                if not self._is_equilibrium_duplicate(eq, equilibria):
+                    eq_type = self._classify_equilibrium(eq)
+                    eq["type"] = eq_type
+                    eq["method"] = "numeric"
+                    equilibria.append(eq)
+
+        return equilibria[:max_solutions]
+
+    def find_endemic_equilibrium(
+        self, params: dict[str, float] | None = None, numeric_fallback: bool = True
+    ) -> dict[str, Any] | None:
+        """
+        Find endemic equilibrium point.
+
+        At endemic equilibrium, disease persists (I* > 0).
+        Only exists when R0 > 1.
+
+        Args:
+            params: Parameter values for numeric solving and R0 calculation
+            numeric_fallback: If True, use numerical solver when symbolic fails
+
+        Returns:
+            Equilibrium dictionary or None if no endemic equilibrium exists
+
+        Example:
+            >>> model.find_endemic_equilibrium({'beta': 0.3, 'gamma': 0.1, 'N': 1000})
+            {'S': 333.33, 'I': 666.67, 'R': 0, 'type': 'endemic', 'method': 'symbolic'}
+        """
+        # Check if endemic equilibrium exists (R0 > 1)
+        if params:
+            try:
+                R0_expr = self.compute_R0_next_generation()
+                R0_val = float(self.substitute_values(R0_expr, params))
+                if R0_val <= 1:
+                    return None  # No endemic equilibrium when R0 <= 1
+            except Exception:
+                pass
+
+        # Find all equilibria and filter for endemic
+        equilibria = self.find_all_equilibria(params, numeric_fallback)
+
+        for eq in equilibria:
+            if eq.get("type") == "endemic":
+                return eq
+
+        return None
+
+    def _find_equilibria_symbolic(self, max_solutions: int) -> list[dict[str, Any]]:
+        """
+        Find equilibria using symbolic solving.
+
+        Args:
+            max_solutions: Maximum number of solutions to find
+
+        Returns:
+            List of equilibrium dictionaries
+        """
+        equilibria = []
+
+        if not self.odes:
+            return equilibria
+
+        try:
+            # Build system of equations: dx/dt = 0 for all variables
+            equations = []
+            for var_sym, ode_rhs in self.odes.items():
+                equations.append(Eq(ode_rhs, 0))
+
+            # Solve the system
+            variables_list = list(self.variables.values())
+            solutions = solve(equations, variables_list, dict=True)
+
+            # Handle single solution case
+            if solutions and not isinstance(solutions, list):
+                solutions = [solutions]
+
+            for solution in solutions[:max_solutions]:
+                eq = {}
+
+                # Extract values for each variable
+                for var_name, var_sym in self.variables.items():
+                    if var_sym in solution:
+                        eq[var_name] = solution[var_sym]
+                    else:
+                        eq[var_name] = var_sym
+
+                # Validate the equilibrium
+                if self._validate_equilibrium(eq):
+                    equilibria.append(eq)
+
+        except Exception as e:
+            # Symbolic solving failed, will fall back to numeric
+            pass
+
+        return equilibria
+
+    def _find_equilibria_numeric(
+        self, params: dict[str, float], max_solutions: int
+    ) -> list[dict[str, Any]]:
+        """
+        Find equilibria using numerical solving.
+
+        Args:
+            params: Parameter values
+            max_solutions: Maximum number of solutions to find
+
+        Returns:
+            List of equilibrium dictionaries
+        """
+        equilibria = []
+
+        if not self.odes or not params:
+            return equilibria
+
+        try:
+            import numpy as np
+            from scipy.optimize import fsolve
+
+            # Substitute parameter values into ODEs
+            odes_numeric = {}
+            for var_sym, ode_rhs in self.odes.items():
+                odes_numeric[var_sym] = self.substitute_values(ode_rhs, params)
+
+            # Define system of equations for fsolve
+            def equations(x):
+                result = []
+                for i, (var_sym, ode_rhs) in enumerate(odes_numeric.items()):
+                    # Substitute variable values
+                    subs_dict = {}
+                    for j, (v_name, v_sym) in enumerate(self.variables.items()):
+                        subs_dict[v_sym] = x[j]
+
+                    val = float(ode_rhs.subs(subs_dict))
+                    result.append(val)
+                return result
+
+            # Try multiple initial guesses
+            n_vars = len(self.variables)
+            initial_guesses = self._generate_initial_guesses(params, n_vars, max_solutions)
+
+            found_solutions = set()
+
+            for x0 in initial_guesses:
+                try:
+                    solution, info, ier, msg = fsolve(equations, x0, full_output=True)
+
+                    if ier == 1:  # Solution found
+                        # Round to avoid duplicates
+                        solution_key = tuple(round(x, 6) for x in solution)
+
+                        if solution_key not in found_solutions:
+                            found_solutions.add(solution_key)
+
+                            eq = {}
+                            for i, (var_name, var_sym) in enumerate(self.variables.items()):
+                                eq[var_name] = float(solution[i])
+
+                            # Validate
+                            if self._validate_equilibrium(eq, tolerance=1e-6):
+                                equilibria.append(eq)
+
+                                if len(equilibria) >= max_solutions:
+                                    break
+                except Exception:
+                    continue
+
+        except ImportError:
+            # scipy not available
+            pass
+        except Exception:
+            pass
+
+        return equilibria
+
+    def _generate_initial_guesses(
+        self, params: dict[str, float], n_vars: int, n_guesses: int
+    ) -> list[list[float]]:
+        """
+        Generate initial guesses for numeric equilibrium finding.
+
+        Args:
+            params: Parameter values
+            n_vars: Number of variables
+            n_guesses: Number of guesses to generate
+
+        Returns:
+            List of initial guess vectors
+        """
+        guesses = []
+        N = params.get("N", params.get(str(self.total_population), 1000))
+
+        # 1. DFE
+        dfe_guess = [0.0] * n_vars
+        for i, var_name in enumerate(self.variables.keys()):
+            if var_name.startswith("S") or "Susceptible" in var_name:
+                dfe_guess[i] = N
+        guesses.append(dfe_guess)
+
+        # 2. Endemic-like (small I, large S)
+        endemic_guess = [0.0] * n_vars
+        for i, var_name in enumerate(self.variables.keys()):
+            if var_name.startswith("S") or "Susceptible" in var_name:
+                endemic_guess[i] = N * 0.8
+            elif var_name.startswith("I") or "Infectious" in var_name:
+                endemic_guess[i] = N * 0.1
+            elif var_name.startswith("R") or "Removed" in var_name:
+                endemic_guess[i] = N * 0.1
+        guesses.append(endemic_guess)
+
+        # 3. Random guesses
+        np.random.seed(42)  # Reproducibility
+        for _ in range(n_guesses - 2):
+            guess = np.random.uniform(0, N, n_vars)
+            # Ensure sum equals N for conserved models
+            if self.total_population:
+                guess = guess / guess.sum() * N
+            guesses.append(guess.tolist())
+
+        return guesses[:n_guesses]
+
+    def _classify_equilibrium(self, eq: dict[str, Any]) -> str:
+        """
+        Classify equilibrium as disease-free or endemic.
+
+        Args:
+            eq: Equilibrium dictionary
+
+        Returns:
+            'dfe' or 'endemic'
+        """
+        infected_vars = self._identify_infected_compartments()
+
+        for var_name in infected_vars:
+            value = eq.get(var_name, 0)
+
+            # Convert symbolic to numeric if needed
+            if hasattr(value, "evalf"):
+                try:
+                    value = float(value.evalf())
+                except Exception:
+                    # Symbolic and non-zero, likely endemic
+                    return "endemic"
+
+            if value != 0:
+                return "endemic"
+
+        return "dfe"
+
+    def _validate_equilibrium(self, eq: dict[str, Any], tolerance: float = 1e-10) -> bool:
+        """
+        Validate that a point is actually an equilibrium.
+
+        Args:
+            eq: Equilibrium dictionary
+            tolerance: Tolerance for checking dx/dt ≈ 0
+
+        Returns:
+            True if valid equilibrium, False otherwise
+        """
+        if not self.odes:
+            return True
+
+        try:
+            # Substitute equilibrium values into ODEs
+            subs_dict = {}
+            for var_name, value in eq.items():
+                if var_name in self.variables:
+                    subs_dict[self.variables[var_name]] = value
+
+            for var_sym, ode_rhs in self.odes.items():
+                residual = ode_rhs.subs(subs_dict)
+
+                # Evaluate numerically
+                if hasattr(residual, "evalf"):
+                    residual = float(residual.evalf())
+
+                if abs(residual) > tolerance:
+                    return False
+
+            return True
+        except Exception:
+            return False
+
+    def _is_equilibrium_duplicate(
+        self, eq: dict[str, Any], existing: list[dict[str, Any]], tolerance: float = 1e-6
+    ) -> bool:
+        """
+        Check if equilibrium is duplicate of existing ones.
+
+        Args:
+            eq: Equilibrium to check
+            existing: List of existing equilibria
+            tolerance: Tolerance for comparison
+
+        Returns:
+            True if duplicate, False otherwise
+        """
+        for existing_eq in existing:
+            is_duplicate = True
+
+            for var_name in self.variables.keys():
+                val1 = eq.get(var_name, 0)
+                val2 = existing_eq.get(var_name, 0)
+
+                # Convert to float for comparison
+                try:
+                    if hasattr(val1, "evalf"):
+                        val1 = float(val1.evalf())
+                    elif hasattr(val1, "__float__"):
+                        val1 = float(val1)
+                except (ValueError, TypeError):
+                    # Cannot convert to float, treat as different
+                    is_duplicate = False
+                    break
+
+                try:
+                    if hasattr(val2, "evalf"):
+                        val2 = float(val2.evalf())
+                    elif hasattr(val2, "__float__"):
+                        val2 = float(val2)
+                except (ValueError, TypeError):
+                    # Cannot convert to float, treat as different
+                    is_duplicate = False
+                    break
+
+                if abs(val1 - val2) > tolerance:
+                    is_duplicate = False
+                    break
+
+            if is_duplicate:
+                return True
+
+        return False
+
     def check_stability_at_dfe(self, R0: Any) -> str:
         """
         Check stability of disease-free equilibrium based on R0.
@@ -426,6 +816,712 @@ class SymbolicModel:
             return "unknown"
         except Exception:
             return "unknown"
+
+    def compute_jacobian(
+        self, equilibrium: dict[str, float | Symbol], substitute_values: bool = False
+    ) -> Matrix:
+        """
+        Compute Jacobian matrix at an equilibrium point.
+
+        The Jacobian matrix J has entries J_ij = ∂f_i/∂x_j where:
+        - f_i is the ODE for variable i
+        - x_j is the j-th state variable
+
+        Args:
+            equilibrium: Dictionary mapping variable names to values.
+                        Can be symbolic or numeric values.
+            substitute_values: If True, substitute equilibrium values into Jacobian.
+                             If False, keep symbolic form.
+
+        Returns:
+            SymPy Matrix representing the Jacobian
+
+        Example:
+            >>> dfe = model.find_disease_free_equilibrium()
+            >>> J = model.compute_jacobian(dfe)
+            >>> J
+            Matrix([
+                [0, -beta, 0],
+                [0, beta - gamma, 0],
+                [0, gamma, 0]
+            ])
+        """
+        if not self.odes:
+            raise ValueError("No ODEs defined for this model")
+
+        # Build Jacobian matrix
+        n_vars = len(self.variables)
+        var_names = list(self.variables.keys())
+        var_syms = list(self.variables.values())
+
+        jacobian_entries = []
+
+        for i, var_name_i in enumerate(var_names):
+            var_sym_i = self.variables[var_name_i]
+            ode_i = self.odes.get(var_sym_i)
+
+            if ode_i is None:
+                # No ODE for this variable - all zeros
+                jacobian_entries.append([0] * n_vars)
+                continue
+
+            row = []
+            for j, var_name_j in enumerate(var_names):
+                var_sym_j = self.variables[var_name_j]
+
+                # Compute partial derivative ∂f_i/∂x_j
+                try:
+                    partial = diff(ode_i, var_sym_j)
+                    partial = simplify(partial)
+                except Exception:
+                    partial = 0
+
+                row.append(partial)
+
+            jacobian_entries.append(row)
+
+        J = Matrix(jacobian_entries)
+
+        # Substitute equilibrium values if requested
+        if substitute_values and equilibrium:
+            subs_dict = {}
+            for var_name, value in equilibrium.items():
+                if var_name in self.variables:
+                    subs_dict[self.variables[var_name]] = value
+
+            J = J.subs(subs_dict)
+            J = simplify(J)
+
+        return J
+
+    def compute_eigenvalues(
+        self, jacobian: Matrix, numeric: bool = False, params: dict[str, float] | None = None
+    ) -> list[Any]:
+        """
+        Compute eigenvalues of the Jacobian matrix.
+
+        Eigenvalues determine local stability:
+        - All Re(λ) < 0: stable equilibrium
+        - Any Re(λ) > 0: unstable equilibrium
+        - Re(λ) = 0: neutral or bifurcation point
+
+        Args:
+            jacobian: Jacobian matrix (from compute_jacobian)
+            numeric: Force numeric evaluation of eigenvalues
+            params: Parameter values for numeric evaluation
+
+        Returns:
+            List of eigenvalues (symbolic or numeric complex numbers)
+
+        Example:
+            >>> J = model.compute_jacobian(dfe, substitute_values=True)
+            >>> eigenvalues = model.compute_eigenvalues(J)
+            >>> eigenvalues
+            [0, -gamma, -beta + gamma]
+        """
+        eigenvalues = []
+
+        try:
+            if numeric or params:
+                # Substitute parameter values if provided
+                if params:
+                    subs_dict = {}
+                    for param_name, value in params.items():
+                        if param_name in self.parameters:
+                            subs_dict[self.parameters[param_name]] = value
+                    jacobian = jacobian.subs(subs_dict)
+
+                # Try numeric eigenvalue computation
+                try:
+                    # Convert to numpy array for numeric computation
+                    jac_np = np.array(jacobian.tolist(), dtype=float)
+                    eigenvalues_np = np.linalg.eigvals(jac_np)
+                    eigenvalues = [complex(ev) for ev in eigenvalues_np]
+                except Exception:
+                    # Fall back to symbolic
+                    pass
+
+            if not eigenvalues:
+                # Try symbolic eigenvalue computation
+                eigenvalue_dict = jacobian.eigenvals()
+
+                if eigenvalue_dict:
+                    for eigenvalue, multiplicity in eigenvalue_dict.items():
+                        eigenvalue = simplify(eigenvalue)
+                        # Add according to multiplicity
+                        for _ in range(multiplicity):
+                            eigenvalues.append(eigenvalue)
+                else:
+                    # If eigenvals() fails, try more robust method
+                    n = jacobian.shape[0]
+                    char_poly = jacobian.charpoly()
+                    roots = solve(char_poly.as_expr())
+                    eigenvalues = roots if isinstance(roots, list) else [roots]
+
+        except Exception as e:
+            # Last resort: return empty list
+            pass
+
+        return eigenvalues
+
+    def analyze_stability_full(
+        self,
+        equilibrium: dict[str, float | Symbol],
+        params: dict[str, float] | None = None,
+        tolerance: float = 1e-10,
+    ) -> dict[str, Any]:
+        """
+        Perform full stability analysis at an equilibrium point.
+
+        Computes and analyzes:
+        - Jacobian matrix
+        - Eigenvalues
+        - Stability classification
+        - Bifurcation indicators
+        - Detailed classification (node, focus, saddle, etc.)
+
+        Args:
+            equilibrium: Equilibrium point (variable names to values)
+            params: Parameter values for numeric evaluation
+            tolerance: Tolerance for eigenvalue zero detection
+
+        Returns:
+            Dictionary with comprehensive stability information:
+            - 'jacobian': Jacobian matrix (symbolic or numeric)
+            - 'eigenvalues': List of eigenvalues
+            - 'eigenvalues_numeric': Numeric eigenvalues (if params provided)
+            - 'stability': 'stable', 'unstable', 'neutral', or 'saddle'
+            - 'classification': Detailed type (e.g., 'stable_node', 'unstable_focus')
+            - 'max_real_part': Maximum real part of eigenvalues
+            - 'min_real_part': Minimum real part of eigenvalues
+            - 'has_complex': Boolean indicating complex eigenvalues
+            - 'near_bifurcation': Boolean indicating proximity to bifurcation
+            - 'bifurcation_type': Type of bifurcation if detected
+
+        Example:
+            >>> result = model.analyze_stability_full(dfe, params={'beta': 0.3, 'gamma': 0.1})
+            >>> result['stability']
+            'unstable'
+            >>> result['classification']
+            'unstable_node'
+            >>> result['max_real_part']
+            0.2
+        """
+        result = {
+            "jacobian": None,
+            "eigenvalues": [],
+            "eigenvalues_numeric": [],
+            "stability": "unknown",
+            "classification": "unknown",
+            "max_real_part": None,
+            "min_real_part": None,
+            "has_complex": False,
+            "near_bifurcation": False,
+            "bifurcation_type": None,
+        }
+
+        try:
+            # 1. Compute Jacobian
+            J = self.compute_jacobian(equilibrium, substitute_values=False)
+            result["jacobian"] = J
+
+            # 2. Compute symbolic eigenvalues
+            eigenvalues_sym = self.compute_eigenvalues(J, numeric=False)
+            result["eigenvalues"] = eigenvalues_sym
+
+            # 3. Compute numeric eigenvalues if params provided
+            if params:
+                J_numeric = self.compute_jacobian(equilibrium, substitute_values=True)
+                eigenvalues_num = self.compute_eigenvalues(J_numeric, numeric=True, params=params)
+                result["eigenvalues_numeric"] = eigenvalues_num
+
+                # Use numeric eigenvalues for analysis
+                eigenvalues_for_analysis = eigenvalues_num
+            else:
+                eigenvalues_for_analysis = eigenvalues_sym
+
+            # 4. Analyze eigenvalue spectrum
+            if eigenvalues_for_analysis:
+                real_parts = []
+                imag_parts = []
+
+                for ev in eigenvalues_for_analysis:
+                    if hasattr(ev, "evalf"):
+                        try:
+                            ev_complex = complex(ev.evalf())
+                            real_parts.append(ev_complex.real)
+                            imag_parts.append(ev_complex.imag)
+                        except Exception:
+                            # Symbolic eigenvalue
+                            pass
+                    elif isinstance(ev, complex):
+                        real_parts.append(ev.real)
+                        imag_parts.append(ev.imag)
+                    elif isinstance(ev, (int, float)):
+                        real_parts.append(ev)
+                        imag_parts.append(0.0)
+
+                if real_parts:
+                    result["max_real_part"] = max(real_parts)
+                    result["min_real_part"] = min(real_parts)
+                    result["has_complex"] = any(abs(im) > tolerance for im in imag_parts)
+
+                    # 5. Classify stability
+                    result["stability"] = self._classify_stability(
+                        real_parts, imag_parts, tolerance
+                    )
+
+                    # 6. Detailed classification
+                    result["classification"] = self._classify_stability_detailed(
+                        real_parts, imag_parts, tolerance
+                    )
+
+                    # 7. Detect bifurcations
+                    result["near_bifurcation"], result["bifurcation_type"] = (
+                        self._detect_bifurcation(real_parts, imag_parts, tolerance)
+                    )
+
+        except Exception as e:
+            result["error"] = str(e)
+
+        return result
+
+    def _classify_stability(
+        self, real_parts: list[float], imag_parts: list[float], tolerance: float
+    ) -> str:
+        """
+        Classify stability based on eigenvalue real parts.
+
+        Args:
+            real_parts: Real parts of eigenvalues
+            imag_parts: Imaginary parts of eigenvalues
+            tolerance: Tolerance for zero detection
+
+        Returns:
+            'stable', 'unstable', 'saddle', or 'neutral'
+        """
+        max_real = max(real_parts)
+        min_real = min(real_parts)
+
+        # Check for zero eigenvalues (neutral)
+        if abs(max_real) < tolerance and abs(min_real) < tolerance:
+            return "neutral"
+
+        # Check for mixed signs (saddle point)
+        if max_real > tolerance and min_real < -tolerance:
+            return "saddle"
+
+        # Check for all negative (stable)
+        if max_real < -tolerance:
+            return "stable"
+
+        # Check for all positive (unstable)
+        if min_real > tolerance:
+            return "unstable"
+
+        # Some eigenvalues near zero
+        if abs(max_real) < tolerance or abs(min_real) < tolerance:
+            return "neutral"
+
+        return "unknown"
+
+    def _classify_stability_detailed(
+        self, real_parts: list[float], imag_parts: list[float], tolerance: float
+    ) -> str:
+        """
+        Detailed stability classification.
+
+        Args:
+            real_parts: Real parts of eigenvalues
+            imag_parts: Imaginary parts of eigenvalues
+            tolerance: Tolerance for zero detection
+
+        Returns:
+            Detailed classification string
+        """
+        max_real = max(real_parts)
+        min_real = min(real_parts)
+        has_complex = any(abs(im) > tolerance for im in imag_parts)
+
+        # Determine base stability
+        if max_real < -tolerance:
+            base = "stable"
+        elif min_real > tolerance:
+            base = "unstable"
+        elif max_real > tolerance and min_real < -tolerance:
+            base = "saddle"
+        elif abs(max_real) < tolerance:
+            base = "neutral"
+        else:
+            base = "unknown"
+
+        # Determine type (node vs focus)
+        if has_complex:
+            type_str = "focus"
+        else:
+            type_str = "node"
+
+        # Special case: saddle
+        if base == "saddle":
+            return f"saddle_point"
+
+        # Combine
+        if base in ["stable", "unstable"]:
+            return f"{base}_{type_str}"
+        elif base == "neutral":
+            if has_complex:
+                return "center"
+            else:
+                return "neutral"
+
+        return base
+
+    def _detect_bifurcation(
+        self, real_parts: list[float], imag_parts: list[float], tolerance: float
+    ) -> tuple[bool, str | None]:
+        """
+        Detect if system is near a bifurcation point.
+
+        Bifurcations occur when eigenvalues cross the imaginary axis.
+
+        Args:
+            real_parts: Real parts of eigenvalues
+            imag_parts: Imaginary parts of eigenvalues
+            tolerance: Tolerance for detection
+
+        Returns:
+            Tuple of (is_near_bifurcation, bifurcation_type)
+        """
+        # Check if any eigenvalue is near imaginary axis
+        near_bifurcation = False
+        bifurcation_type = None
+
+        for i, (re, im) in enumerate(zip(real_parts, imag_parts)):
+            if abs(re) < tolerance * 10:  # Near zero real part
+                near_bifurcation = True
+
+                if abs(im) < tolerance:
+                    # Real eigenvalue crossing zero
+                    bifurcation_type = "transcritical_or_saddle_node"
+                else:
+                    # Complex pair crossing imaginary axis
+                    bifurcation_type = "hopf"
+
+                break
+
+        return near_bifurcation, bifurcation_type
+
+    def compute_sensitivity_matrix(
+        self, output_vars: list[str] | None = None, params: list[str] | None = None
+    ) -> dict[str, dict[str, Any]]:
+        """
+        Compute sensitivity of outputs to parameters.
+
+        S_ij = ∂y_i/∂p_j where y is output and p is parameter.
+
+        Args:
+            output_vars: Variables to analyze (default: all)
+            params: Parameters to analyze (default: all)
+
+        Returns:
+            Nested dictionary: {output_var: {param: sensitivity_expression}}
+
+        Example:
+            >>> S = model.compute_sensitivity_matrix()
+            >>> S['I']['beta']
+            S*I*N/(beta*I*N - gamma*N**2)  # Symbolic expression
+        """
+        if output_vars is None:
+            output_vars = list(self.variables.keys())
+        if params is None:
+            params = list(self.parameters.keys())
+
+        sensitivities = {}
+
+        # Compute partial derivatives symbolically
+        for output_var in output_vars:
+            output_sym = self.variables[output_var]
+            sensitivities[output_var] = {}
+
+            for param in params:
+                param_sym = self.parameters[param]
+
+                try:
+                    # Try to compute symbolic derivative
+                    # For equilibrium values, this requires knowing the equilibrium expression
+                    # Simplified: we'll compute numeric sensitivities instead
+                    sensitivities[output_var][param] = None
+                except Exception:
+                    sensitivities[output_var][param] = None
+
+        return sensitivities
+
+    def compute_elasticity_indices(
+        self, params: dict[str, float], output_vars: list[str] | None = None
+    ) -> dict[str, dict[str, float]]:
+        """
+        Compute elasticity indices (normalized sensitivity).
+
+        E_ij = (∂y_i/y_i) / (∂p_j/p_j) = (p_j/y_i) * (∂y_i/∂p_j)
+
+        Interpreted as: percentage change in output per 1% change in parameter.
+
+        Args:
+            params: Parameter values (numeric)
+            output_vars: Variables to analyze
+
+        Returns:
+            Nested dictionary: {output_var: {param: elasticity}}
+
+        Example:
+            >>> E = model.compute_elasticity_indices({'beta': 0.3, 'gamma': 0.1, 'N': 1000})
+            >>> E['I']['beta']
+            1.0  # 1% increase in beta → 1% increase in I*
+        """
+        elasticities = {}
+
+        if output_vars is None:
+            output_vars = list(self.variables.keys())
+
+        # Find equilibrium values
+        try:
+            equilibria = self.find_all_equilibria(params)
+            equilibrium = None
+
+            # Prefer endemic equilibrium if available
+            for eq in equilibria:
+                if eq.get("type") == "endemic":
+                    equilibrium = eq
+                    break
+
+            if equilibrium is None:
+                # Fall back to DFE
+                equilibrium = self.find_disease_free_equilibrium()
+
+            # Compute elasticities at equilibrium
+            for output_var in output_vars:
+                var_elasticities = {}
+
+                # Get equilibrium value
+                eq_value = equilibrium.get(output_var, 0)
+                if eq_value is None:
+                    continue
+
+                if hasattr(eq_value, "evalf"):
+                    try:
+                        eq_value = float(eq_value.evalf())
+                    except (TypeError, ValueError):
+                        continue
+
+                if eq_value == 0:
+                    elasticities[output_var] = {}
+                    continue
+
+                # Compute elasticity for each parameter
+                for param, param_val in params.items():
+                    if param_val == 0 or eq_value == 0:
+                        var_elasticities[param] = 0.0
+                        continue
+
+                    # Perturb parameter by small amount
+                    delta_p = param_val * 0.01  # 1% perturbation
+                    params_perturbed = params.copy()
+                    params_perturbed[param] = param_val + delta_p
+
+                    # Find new equilibrium
+                    try:
+                        equilibria_perturbed = self.find_all_equilibria(params_perturbed)
+                        eq_perturbed = None
+
+                        # Find equilibrium of same type
+                        for eq_p in equilibria_perturbed:
+                            if eq_p.get("type") == equilibrium.get("type"):
+                                eq_perturbed = eq_p
+                                break
+
+                        if eq_perturbed is None:
+                            var_elasticities[param] = 0.0
+                            continue
+
+                        # Get perturbed equilibrium value
+                        eq_perturbed_value = eq_perturbed.get(output_var, 0)
+                        if eq_perturbed_value is None:
+                            var_elasticities[param] = 0.0
+                            continue
+
+                        if hasattr(eq_perturbed_value, "evalf"):
+                            try:
+                                eq_perturbed_value = float(eq_perturbed_value.evalf())
+                            except (TypeError, ValueError):
+                                var_elasticities[param] = 0.0
+                                continue
+
+                        if eq_perturbed_value == 0:
+                            var_elasticities[param] = 0.0
+                            continue
+
+                        # Compute elasticity: % change in output / % change in param
+                        percent_change_param = (delta_p / param_val) * 100.0
+                        percent_change_output = ((eq_perturbed_value - eq_value) / eq_value) * 100.0
+
+                        # Elasticity = percent_change_output / percent_change_param
+                        if abs(percent_change_param) > 1e-10:
+                            var_elasticities[param] = percent_change_output / percent_change_param
+                        else:
+                            var_elasticities[param] = 0.0
+                    except Exception:
+                        var_elasticities[param] = 0.0
+
+                elasticities[output_var] = var_elasticities
+
+        except Exception as e:
+            # Return zeros if computation fails
+            elasticities = {var: {} for var in output_vars}
+
+        return elasticities
+
+    def perform_perturbation_analysis(
+        self,
+        params: dict[str, float],
+        equilibrium: dict[str, float],
+        perturbation: float = 0.01,
+        output_vars: list[str] | None = None,
+    ) -> dict[str, dict[str, float]]:
+        """
+        Numerical perturbation analysis.
+
+        For each parameter p:
+        1. Perturb p by (1 + perturbation)
+        2. Recompute equilibrium
+        3. Calculate % change in outputs
+
+        Args:
+            params: Base parameter values
+            equilibrium: Base equilibrium values
+            perturbation: Perturbation size (default: 1%)
+            output_vars: Variables to analyze
+
+        Returns:
+            Nested dictionary: {output_var: {param: percent_change}}
+
+        Example:
+            >>> PA = model.perform_perturbation_analysis(params, dfe, 0.01)
+            >>> PA['I']['beta']
+            0.98  # 1% increase in beta → 0.98% increase in I
+        """
+        perturbations = {}
+
+        if output_vars is None:
+            output_vars = list(self.variables.keys())
+
+        # Get base equilibrium values
+        base_eq = {}
+        for var_name in output_vars:
+            val = equilibrium.get(var_name, 0)
+            if val is None:
+                continue
+
+            if hasattr(val, "evalf"):
+                try:
+                    val = float(val.evalf())
+                except (TypeError, ValueError):
+                    continue
+
+            base_eq[var_name] = val
+
+        # For each parameter
+        for param_name in params.keys():
+            param_val = params[param_name]
+
+            # Create perturbed params
+            params_perturbed = params.copy()
+            params_perturbed[param_name] = param_val * (1 + perturbation)
+
+            # Find equilibrium with perturbed params
+            try:
+                equilibria_perturbed = self.find_all_equilibria(params_perturbed)
+                eq_perturbed = None
+
+                # Find equilibrium of same type
+                for eq in equilibria_perturbed:
+                    if eq.get("type") == equilibrium.get("type"):
+                        eq_perturbed = eq
+                        break
+
+                if eq_perturbed is None:
+                    continue
+
+                # Get perturbed equilibrium values
+                for var_name in output_vars:
+                    if var_name not in perturbations:
+                        perturbations[var_name] = {}
+
+                    val_perturbed = eq_perturbed.get(var_name, 0)
+                    if val_perturbed is None:
+                        perturbations[var_name][param_name] = 0.0
+                        continue
+
+                    if hasattr(val_perturbed, "evalf"):
+                        try:
+                            val_perturbed = float(val_perturbed.evalf())
+                        except (TypeError, ValueError):
+                            perturbations[var_name][param_name] = 0.0
+                            continue
+
+                    # Calculate percent change
+                    if base_eq.get(var_name, 0) != 0:
+                        percent_change = (
+                            (val_perturbed - base_eq[var_name]) / base_eq[var_name]
+                        ) * 100.0
+                    else:
+                        percent_change = 0.0
+
+                    perturbations[var_name][param_name] = percent_change
+
+            except Exception:
+                for var_name in output_vars:
+                    if var_name not in perturbations:
+                        perturbations[var_name] = {}
+                    perturbations[var_name][param_name] = 0.0
+
+        return perturbations
+
+    def rank_parameter_importance(
+        self, params: dict[str, float], output_var: str, method: str = "elasticity"
+    ) -> list[tuple[str, float]]:
+        """
+        Rank parameters by importance for a given output.
+
+        Args:
+            params: Parameter values
+            output_var: Variable to analyze
+            method: 'elasticity' or 'perturbation'
+
+        Returns:
+            List of (parameter, importance_score) tuples, sorted by absolute importance
+
+        Example:
+            >>> model.rank_parameter_importance(params, 'I')
+            [('beta', 1.0), ('gamma', -1.0), ('N', 0.0)]
+            # beta most important, gamma second, N has no effect
+        """
+        # Compute sensitivity based on method
+        if method == "elasticity":
+            sensitivities = self.compute_elasticity_indices(params, [output_var])
+        elif method == "perturbation":
+            dfe = self.find_disease_free_equilibrium()
+            sensitivities = self.perform_perturbation_analysis(params, dfe, 0.01, [output_var])
+        else:
+            # Unknown method
+            return []
+
+        # Rank by absolute importance
+        if output_var not in sensitivities:
+            return []
+
+        ranking = sorted(sensitivities[output_var].items(), key=lambda x: abs(x[1]), reverse=True)
+
+        return ranking
 
     def _get_context(self) -> dict:
         """

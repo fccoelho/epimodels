@@ -6,4 +6,4 @@ license: GPL V3 or Later
 
 from .models import *
 
-__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "SIRSEI"]
+__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "SIRSEI", "SIR2Strain"]

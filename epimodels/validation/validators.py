@@ -222,12 +222,6 @@ def _eval_node(node: ast.AST, context: dict[str, Any]) -> Any:
     if isinstance(node, ast.Constant):
         return node.value
 
-    if isinstance(node, ast.Num):
-        return node.n
-
-    if isinstance(node, ast.Str):
-        return node.s
-
     if isinstance(node, ast.Name):
         name = node.id
         if name in context:

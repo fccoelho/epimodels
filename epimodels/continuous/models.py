@@ -549,7 +549,7 @@ class Dengue4Strain(ContinuousModel):
                 "beta": r"$\beta$",  #  transmission rate
                 "N": r"$N$",  #  total population
                 "delta": r"$\delta$",  #  cross-immunity protection
-                "mu": r"$\mu",  #  mortality rate
+                "mu": r"$\mu$",  #  mortality rate
                 "sigma": r"$\sigma$",  #  recovery rate
                 "im": r"$i_m$",  #  imported cases
             }
@@ -1190,67 +1190,7 @@ class SIRSEI(ContinuousModel):
         μ  : mosquito mortality
         l   : mosquito latent-stage mortality
         γ   : human recovery rate
-    """
-
-    def __init__(self):
-        super().__init__()
-
-        self.state_variables = OrderedDict({
-            "Sh": "Susceptible Humans",
-            "Ih": "Infectious Humans",
-            "Rh": "Recovered Humans",
-            "Sv": "Susceptible Mosquitoes",
-            "Ev": "Exposed Mosquitoes",
-            "Iv": "Infectious Mosquitoes",
-        })
-
-        self.parameters = OrderedDict({
-            "b1": r"$b_1$",
-            "b2": r"$b_2$",
-            "gamma": r"$\gamma$",
-            "mu_H": r"$\mu_H$",
-
-            "T1": r"$T_1$",
-            "T2": r"$T_2$",
-            "omega1": r"$\omega_1$",
-            "phi1": r"$\phi_1$",
-
-            "R1": r"$R_1$",
-            "R2": r"$R_2$",
-            "omega2": r"$\omega_2$",
-            "phi2": r"$\phi_2$",
-
-            "BE": r"$B_E$",
-            "pME": r"$p_{ME}$",
-            "pML": r"$p_{ML}$",
-            "pMP": r"$p_{MP}$",
-
-            "tauE": r"$\tau_E$",
-            "tauP": r"$\tau_P$",
-            "RL": r"$R_L$",
-
-            "DD": r"$DD$",
-            "Tmin": r"$T_{min}$",
-
-            "A": r"$A$",
-            "B": r"$B$",
-            "C": r"$C$",
-
-            "D1": r"$D_1$",
-            "c1": r"$c_1$",
-            "c2": r"$c_2$",
-
-            "T_prime": r"$T'$",
-        })
-
-        self.model_type = "SIR-SEI"
-
-    @property
-    def diagram(self) -> str:
-        """Mermaid diagram of the compartmental model"""
-        return r"""flowchart LR
-
-subgraph Humans
+        subgraph Humans
 Sh(S_h)
 Ih(I_h)
 Rh(R_h)
@@ -1271,45 +1211,45 @@ Sv -->|$$a b_1 I_h/N$$| Ev
 Ev -->|$$b_3$$| Iv
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for the SIR-SEI model.
+  @property
+  def R0(self) -> float | None:
+      """
+      Basic reproduction number for the SIR-SEI model.
 
-        R0 = sqrt((a^2 * b1 * b2 * b3) / ((b3 + l + mu) * gamma * mu))
+      R0 = sqrt((a^2 * b1 * b2 * b3) / ((b3 + l + mu) * gamma * mu))
 
-        :return: Basic reproduction number, or None if parameters not set
-        """
+      :return: Basic reproduction number, or None if parameters not set
+      """
 
-        if not self.param_values:
-            return None
+      if not self.param_values:
+          return None
 
-        p = self.param_values
+      p = self.param_values
 
-        required = ["b1", "b2", "gamma"]
+      required = ["b1", "b2", "gamma"]
 
-        if not all(k in p for k in required):
-            return None
+      if not all(k in p for k in required):
+          return None
 
-        # Use reference temperature for evaluation
-        T = p["T1"]
+      # Use reference temperature for evaluation
+      T = p["T1"]
 
-        a = (T - p["T_prime"]) / p["D1"]
-        p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
-        mu = -np.log(p_survive)
+      a = (T - p["T_prime"]) / p["D1"]
+      p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
+      mu = -np.log(p_survive)
 
-        tau_M = p["DD"] / (T - p["Tmin"])
-        b3 = 1 / tau_M
+      tau_M = p["DD"] / (T - p["Tmin"])
+      b3 = 1 / tau_M
 
-        l = p_survive ** tau_M
+      l = p_survive ** tau_M
 
-        return float(
-            np.sqrt(
-                (a**2 * p["b1"] * p["b2"] * b3)
-                /
-                ((b3 + l + mu) * p["gamma"] * mu)
-            )
-        )
+      return float(
+          np.sqrt(
+              (a**2 * p["b1"] * p["b2"] * b3)
+              /
+              ((b3 + l + mu) * p["gamma"] * mu)
+          )
+      )
 
     def R0_t(self, t: float) -> float | None:
         """
@@ -1458,5 +1398,147 @@ Ev -->|$$b_3$$| Iv
         plt.title(title, fontsize=14)
         plt.tight_layout()
         plt.show()
+        
+class SIR2Strain(ContinuousModel):
+    """
+    SIR (Susceptible-Infectious-Removed) Model with two strains.
 
-__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "SIRSEI"]
+    A compartmental model for infectious disease dynamics with two strains.
+    Adapted from: https://doi.org/10.1016/j.jtbi.2011.08.043
+
+    State Variables:
+        - S: Susceptible individuals
+        - S1: Susceptible individuals with a previous infection with strain 1
+        - S2: Susceptible individuals with a previous infection with strain 2
+        - I1: Infectious individuals (first infection) with strain 1
+        - I21: Infectious individuals (second infection) with strain 1
+        - I2: Infectious individuals (first infection) with strain 2
+        - I12: Infectious individuals (second infection) with strain 2
+        - R1: Recovered individuals from the first infection with strain 1
+        - R2: Recovered individuals from the first infection with strain 2
+        - R: Recovered individuals from the secondary infection
+
+    Parameters:
+        - beta (β): Infection rate
+        - gamma (γ): Recovery rate (1 / average infectious period)
+        - mu (μ): Birth and death rate
+        - rho (ρ): Ratio of secondary infections contributing to force of infection (adimensional)
+        - phi (Φ): Import parameter (adimensional)
+        - alpha (α): Temporary cross-immunity rate (1 / average corss-immunity duration period)
+
+    Equations:
+        dS/dt = - β/N S (I1 + ρ N + Φ I21) - β/N S(I2 + ρ N + Φ I12) + μ (N-S)
+        dI1/dt = β/N S (I1 + ρ N + Φ I21) - (γ + μ) I1
+        dI2/dt = β/N S (I2 + ρ N + Φ I12) - (γ + μ) I2
+        dR1/dt = γ I1 - (α + μ) R1
+        dR2/dt = γ I2 - (α + μ) R2
+        dS1/dt = - β/N S1 (I2 + ρ N + Φ I12) + α R1 - μ S1
+        dS2/dt = - β/N S2 (I1 + ρ N + Φ I21) + α R2 - μ S2
+        dI12/dt = β/N S1 (I2 + ρ N + Φ I12) - (γ + μ) I12
+        dI21/dt = β/N S2 (I1 + ρ N + Φ I21) - (γ + μ) I21
+        dR/dt = γ (I12 + I21) - μ R
+
+    Example:
+    model = SIR2Strain()
+    model([9990, 4, 6, 0, 0, 0, 0, 0, 0, 0], [0, 100], 10000, {'beta': 2, 'gamma': 1/52, 'mu': 1/65, 'rho': 0.001, 'phi': 0.2, 'alpha': 1/2})
+    model.plot_traces()
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict(
+            {
+                "S": "Susceptible",
+                "I_1": "Infectious 1",
+                "I_2": "Infectious 2",
+                "R_1": "Removed 1",
+                "R_2": "Removed 2",
+                "S1": "Susceptible with a previous infection with strain 1, i.e., susceptible only to strain 2",
+                "S2": "Susceptible with a previous infection with strain 2, i.e., susceptible only to strain 1",
+                "I_12": "Infectious 1 after 2",
+                "I_21": "Infectious 2 after 1",
+                "R": "Removed 1 and 2"
+            }
+        )
+        self.parameters = OrderedDict(
+            {
+                "beta": r"$\beta$",  #  infection rate
+                "gamma": r"$\gamma", # recovery rate
+                "mu": r"$\mu",  # birth and death rate
+                "rho": r"$\rho$", # ratio of secondary infections contributing
+                "phi": r"$\phi$", # import parameter
+                "alpha": r"$\alpha$" # temporary cross-immunity
+            }
+        )
+        self.model_type = "SIR2Strain"
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+    S(Susceptible) -->|"$$\frac{\beta}{N} (I1 + \rho N + \phi I_{21})$$"| I1(I1)
+    S -->|"$$\frac{\beta}{N} (I2 + \rho N + \phi I_{12})$$"| I2(I2)
+
+    I1 -->|"$$\gamma$$"| R1(R1)
+
+    I2 -->|"$$\gamma$$"| R2(R2)
+
+    R1 -->|"$$\alpha$$"| S1(S1)
+
+    R2 -->|"$$\alpha$$"| S2(S2)
+
+    S1 -->|"$$\frac{\beta}{N} (I2 + \rho N + \phi I_{12})$$"| I12(I12)
+
+    S2 -->|"$$\frac{\beta}{N} (I1 + \rho N + \phi I_{21})$$"| I21(I21)
+
+    I12 -->|"$$\gamma$$"| R(R)
+
+    I21 -->|"$$\gamma$$"| R
+
+    R -->|"$$\mu$$"| OUT
+    
+    classDef strain1 fill:#ffcccc,stroke:#ff0000
+    classDef strain2 fill:#ccffcc,stroke:#00ff00
+    classDef invisible fill:none,stroke:none,color:none
+    
+    class I1,I21 strain1
+    class I2,I12 strain2
+
+    """
+
+    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
+        (
+            S,
+            I1,
+            I2,
+            R1,
+            R2,
+            S1,
+            S2,
+            I12,
+            I21,
+            R
+        ) = y
+        beta, gamma, mu, rho, phi, alpha, N = (
+            params["beta"],
+            params["gamma"],
+            params["mu"],
+            params["rho"],
+            params["phi"],
+            params["alpha"],
+            params["N"]
+        )
+        return [- beta/N * S * (I1 + rho * N + phi * I21) - beta/N * S * (I2 + rho * N + phi * I12) + mu * (N-S),
+                beta/N * S * (I1 + rho * N + phi * I21) - (gamma + mu) * I1,
+                beta/N * S * (I2 + rho * N + phi * I12) - (gamma + mu) * I2,
+                gamma * I1 - (alpha + mu) * R1,
+                gamma * I2 - (alpha + mu) * R2,
+                - beta/N * S1 * (I2 + rho * N + phi * I12) + alpha * R1 - mu * S1,
+                - beta/N * S2 * (I1 + rho * N + phi * I21) + alpha * R2 - mu * S2,
+                beta/N * S1 * (I2 + rho * N + phi * I12) - (gamma + mu) * I12,
+                beta/N * S2 * (I1 + rho * N + phi * I21) - (gamma + mu) * I21,
+                gamma * (I12 + I21) - mu * R]
+
+
+
