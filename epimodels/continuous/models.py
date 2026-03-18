@@ -1684,5 +1684,73 @@ class SIR2Strain(ContinuousModel):
                 beta/N * S2 * (I1 + rho * N + phi * I21) - (gamma + mu) * I21,
                 gamma * (I12 + I21) - mu * R]
 
+class SISLogistic(ContinuousModel):
+    """
+    SIS model with logistic growth.
 
+    State Variables:
+        - S: Susceptible individuals
+        - I: Infectious individuals
+
+    Parameters:
+        - beta (β): Transmission rate
+        - gamma (γ): Recovery rate
+        - r: Population growth rate
+        - k: Carrying capacity
+
+    Equations:
+
+        dS/dt = rS(1 - N/k) - βSI/N + γI
+        dI/dt = βSI/N - γI
+
+    Basic Reproduction Number:
+        R₀ = β/γ
+
+    Note:
+        N = S + I
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict({"S": "Susceptible", "I": "Infectious"})
+        self.parameters = {"beta": r"\beta", "gamma": r"\gamma", "r": r"r", "k": r"k"}
+        self.model_type = "SIS_logistic"
+
+    @property
+    def diagram(self) -> str:
+        return r"""flowchart LR
+         
+S(Susceptible) -->|$$\beta$$| I(Infectious)
+I -->|$$\gamma$$| S
+S --> |$$r(1-N/k)$$| S
+"""
+
+    @property
+    def R0(self) -> float | None:
+        """
+        Basic reproduction number for SIS logistc model.
+
+        R0 = β / γ
+
+        :return: Basic reproduction number, or None if parameters not set
+        """
+        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
+            return float(self.param_values["beta"] / self.param_values["gamma"])
+        return None
+
+    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
+
+        S, I = y
+
+        beta = params["beta"]
+        gamma = params["gamma"]
+        r = params["r"]
+        k = params["k"]
+
+        N = S + I
+
+        dS = r * S * (1 - N / k) - beta * S * I / N + gamma * I
+        dI = beta * S * I / N - gamma * I
+
+        return [dS, dI]
 
