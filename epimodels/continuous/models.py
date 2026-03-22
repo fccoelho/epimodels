@@ -153,8 +153,7 @@ class ContinuousModel(BaseModel):
         for name, expr in formulas.items():
             if not isinstance(expr, (Expr, int, float)):
                 raise TypeError(
-                    f"Formula for '{name}' must be a SymPy expression, "
-                    f"got {type(expr).__name__}"
+                    f"Formula for '{name}' must be a SymPy expression, got {type(expr).__name__}"
                 )
 
     def to_vfgen(
@@ -1234,22 +1233,24 @@ class Dengue4Strain(ContinuousModel):
             sigma * (I_1234 + I_1243 + I_1342 + I_2341) - mu * R_1234,  # R_1234
         ]
 
+
 ###################################################
 
 ### Malaria SIR/SEI model
+
 
 class SIRSEI(ContinuousModel):
     """
     SIR–SEI Vector-Borne Disease Model.
 
-    This base model is based on the paper 
+    This base model is based on the paper
     'Modelling Climate Change and on Malaria Transmission (Parham and Michael, 2010)'
     and inspired by the Trajetórias Project developed by SinBiose/CNPq.
-    
-    Further development will be done to include the effects of deforestation 
+
+    Further development will be done to include the effects of deforestation
     and forest fires on mosquito habitat and transmission dynamics.
 
-    Later versions of the model replaced the use of temperature and precipitation 
+    Later versions of the model replaced the use of temperature and precipitation
     functions for real data from the Mosqlimate datastore.
 
     Humans:
@@ -1287,48 +1288,54 @@ class SIRSEI(ContinuousModel):
         μ  : mosquito mortality
         l   : mosquito latent-stage mortality
         γ   : human recovery rate
-        """
+    """
+
     def __init__(self):
         super().__init__()
-        self.state_variables = OrderedDict({
-            "Sh": "Susceptible Humans",
-            "Ih": "Infectious Humans",
-            "Rh": "Recovered Humans",
-            "Sv": "Susceptible Mosquitoes",
-            "Ev": "Exposed Mosquitoes",
-            "Iv": "Infectious Mosquitoes",
-        })
-        self.parameters = OrderedDict({
-            "b1": r"$b_1$",
-            "b2": r"$b_2$",
-            "gamma": r"$\gamma$",
-            "mu_H": r"$\mu_H$",
-            "T1": r"$T_1$",
-            "T2": r"$T_2$",
-            "omega1": r"$\omega_1$",
-            "phi1": r"$\phi_1$",
-            "R1": r"$R_1$",
-            "R2": r"$R_2$",
-            "omega2": r"$\omega_2$",
-            "phi2": r"$\phi_2$",
-            "BE": r"$B_E$",
-            "pME": r"$p_{ME}$",
-            "pML": r"$p_{ML}$",
-            "pMP": r"$p_{MP}$",
-            "tauE": r"$\tau_E$",
-            "tauP": r"$\tau_P$",
-            "RL": r"$R_L$",
-            "DD": r"$DD$",
-            "Tmin": r"$T_{min}$",
-            "A": r"$A$",
-            "B": r"$B$",
-            "C": r"$C$",
-            "D1": r"$D_1$",
-            "c1": r"$c_1$",
-            "c2": r"$c_2$",
-            "T_prime": r"$T'$",
-        })
+        self.state_variables = OrderedDict(
+            {
+                "Sh": "Susceptible Humans",
+                "Ih": "Infectious Humans",
+                "Rh": "Recovered Humans",
+                "Sv": "Susceptible Mosquitoes",
+                "Ev": "Exposed Mosquitoes",
+                "Iv": "Infectious Mosquitoes",
+            }
+        )
+        self.parameters = OrderedDict(
+            {
+                "b1": r"$b_1$",
+                "b2": r"$b_2$",
+                "gamma": r"$\gamma$",
+                "mu_H": r"$\mu_H$",
+                "T1": r"$T_1$",
+                "T2": r"$T_2$",
+                "omega1": r"$\omega_1$",
+                "phi1": r"$\phi_1$",
+                "R1": r"$R_1$",
+                "R2": r"$R_2$",
+                "omega2": r"$\omega_2$",
+                "phi2": r"$\phi_2$",
+                "BE": r"$B_E$",
+                "pME": r"$p_{ME}$",
+                "pML": r"$p_{ML}$",
+                "pMP": r"$p_{MP}$",
+                "tauE": r"$\tau_E$",
+                "tauP": r"$\tau_P$",
+                "RL": r"$R_L$",
+                "DD": r"$DD$",
+                "Tmin": r"$T_{min}$",
+                "A": r"$A$",
+                "B": r"$B$",
+                "C": r"$C$",
+                "D1": r"$D_1$",
+                "c1": r"$c_1$",
+                "c2": r"$c_2$",
+                "T_prime": r"$T'$",
+            }
+        )
         self.model_type = "SIR-SEI"
+
     @property
     def diagram(self) -> str:
         """Mermaid diagram of the compartmental model"""
@@ -1354,46 +1361,39 @@ class SIRSEI(ContinuousModel):
         Ev -->|$$b_3$$| Iv
         """
 
-
     @property
     def R0(self) -> float | None:
-      """
-      Basic reproduction number for the SIR-SEI model.
+        """
+        Basic reproduction number for the SIR-SEI model.
 
-      R0 = sqrt((a^2 * b1 * b2 * b3) / ((b3 + l + mu) * gamma * mu))
+        R0 = sqrt((a^2 * b1 * b2 * b3) / ((b3 + l + mu) * gamma * mu))
 
-      :return: Basic reproduction number, or None if parameters not set
-      """
+        :return: Basic reproduction number, or None if parameters not set
+        """
 
-      if not self.param_values:
-          return None
+        if not self.param_values:
+            return None
 
-      p = self.param_values
+        p = self.param_values
 
-      required = ["b1", "b2", "gamma"]
+        required = ["b1", "b2", "gamma"]
 
-      if not all(k in p for k in required):
-          return None
+        if not all(k in p for k in required):
+            return None
 
-      # Use reference temperature for evaluation
-      T = p["T1"]
+        # Use reference temperature for evaluation
+        T = p["T1"]
 
-      a = (T - p["T_prime"]) / p["D1"]
-      p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
-      mu = -np.log(p_survive)
+        a = (T - p["T_prime"]) / p["D1"]
+        p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
+        mu = -np.log(p_survive)
 
-      tau_M = p["DD"] / (T - p["Tmin"])
-      b3 = 1 / tau_M
+        tau_M = p["DD"] / (T - p["Tmin"])
+        b3 = 1 / tau_M
 
-      l = p_survive ** tau_M
+        l = p_survive**tau_M
 
-      return float(
-          np.sqrt(
-              (a**2 * p["b1"] * p["b2"] * b3)
-              /
-              ((b3 + l + mu) * p["gamma"] * mu)
-          )
-      )
+        return float(np.sqrt((a**2 * p["b1"] * p["b2"] * b3) / ((b3 + l + mu) * p["gamma"] * mu)))
 
     def R0_t(self, t: float) -> float | None:
         """
@@ -1416,15 +1416,9 @@ class SIRSEI(ContinuousModel):
         tau_M = p["DD"] / (T - p["Tmin"])
         b3 = 1 / tau_M
 
-        l = p_survive ** tau_M
+        l = p_survive**tau_M
 
-        return float(
-            np.sqrt(
-                (a**2 * p["b1"] * p["b2"] * b3)
-                /
-                ((b3 + l + mu) * p["gamma"] * mu)
-            )
-        )
+        return float(np.sqrt((a**2 * p["b1"] * p["b2"] * b3) / ((b3 + l + mu) * p["gamma"] * mu)))
 
     def _model(self, t: float, y: list[float], p: dict[str, float]) -> list[float]:
 
@@ -1447,12 +1441,12 @@ class SIRSEI(ContinuousModel):
 
         b3 = 1 / tau_M
 
-        l = p_survive ** tau_M
+        l = p_survive**tau_M
 
         tau_L = 1 / (p["c1"] * T + p["c2"])
 
         # Rainfall dependent larval survival
-        pL_R = (4 * p["pML"] / p["RL"]**2) * R * (p["RL"] - R)
+        pL_R = (4 * p["pML"] / p["RL"] ** 2) * R * (p["RL"] - R)
         pL_R = max(pL_R, 0)
 
         pL_T = np.exp(-(p["c1"] * T + p["c2"]))
@@ -1460,13 +1454,7 @@ class SIRSEI(ContinuousModel):
         p_L = pL_R * pL_T
 
         # Mosquito birth rate
-        b = (
-            p["BE"]
-            * p["pME"]
-            * p_L
-            * p["pMP"]
-            / (p["tauE"] + tau_L + p["tauP"])
-        )
+        b = p["BE"] * p["pME"] * p_L * p["pMP"] / (p["tauE"] + tau_L + p["tauP"])
 
         b1 = p["b1"]
         b2 = p["b2"]
@@ -1480,12 +1468,7 @@ class SIRSEI(ContinuousModel):
 
         dSv = b - a * b1 * (Ih / N) * Sv - mu * Sv
 
-        dEv = (
-            a * b1 * (Ih / N) * Sv
-            - mu * Ev
-            - b3 * Ev
-            - l * Ev
-        )
+        dEv = a * b1 * (Ih / N) * Sv - mu * Ev - b3 * Ev - l * Ev
 
         dIv = b3 * Ev - mu * Iv
 
@@ -1503,7 +1486,9 @@ class SIRSEI(ContinuousModel):
             Figure size (width, height)
         """
         if not self.traces or "time" not in self.traces:
-            print("No data available. Run the model first with: model(inits, trange, totpop, params)")
+            print(
+                "No data available. Run the model first with: model(inits, trange, totpop, params)"
+            )
             return
 
         t = self.traces["time"]
@@ -1519,30 +1504,31 @@ class SIRSEI(ContinuousModel):
 
         plt.grid(True, alpha=0.3)
         plt.legend(fontsize=10)
-        plt.xlabel('Time (days)', fontsize=12)
-        plt.ylabel('Population', fontsize=12)
+        plt.xlabel("Time (days)", fontsize=12)
+        plt.ylabel("Population", fontsize=12)
 
         # Smart title based on which compartments are being plotted
-        human_comps = ['Sh', 'Ih', 'Rh']
-        mosquito_comps = ['Sv', 'Ev', 'Iv']
+        human_comps = ["Sh", "Ih", "Rh"]
+        mosquito_comps = ["Sv", "Ev", "Iv"]
 
         # Check what we're plotting
         has_humans = any(comp in human_comps for comp in compartments)
         has_mosquitoes = any(comp in mosquito_comps for comp in compartments)
 
         if has_humans and has_mosquitoes:
-            title = f'{self.model_type} Model - Full System'
+            title = f"{self.model_type} Model - Full System"
         elif has_humans:
-            title = f'{self.model_type} Model - Human Dynamics (SIR)'
+            title = f"{self.model_type} Model - Human Dynamics (SIR)"
         elif has_mosquitoes:
-            title = f'{self.model_type} Model - Mosquito Dynamics (SEI)'
+            title = f"{self.model_type} Model - Mosquito Dynamics (SEI)"
         else:
-            title = f'{self.model_type} Model Results'
+            title = f"{self.model_type} Model Results"
 
         plt.title(title, fontsize=14)
         plt.tight_layout()
         plt.show()
-        
+
+
 class SIR2Strain(ContinuousModel):
     """
     SIR (Susceptible-Infectious-Removed) Model with two strains.
@@ -1602,17 +1588,17 @@ class SIR2Strain(ContinuousModel):
                 "S2": "Susceptible with a previous infection with strain 2, i.e., susceptible only to strain 1",
                 "I_12": "Infectious 1 after 2",
                 "I_21": "Infectious 2 after 1",
-                "R": "Removed 1 and 2"
+                "R": "Removed 1 and 2",
             }
         )
         self.parameters = OrderedDict(
             {
                 "beta": r"$\beta$",  #  infection rate
-                "gamma": r"$\gamma", # recovery rate
+                "gamma": r"$\gamma",  # recovery rate
                 "mu": r"$\mu",  # birth and death rate
-                "rho": r"$\rho$", # ratio of secondary infections contributing
-                "phi": r"$\phi$", # import parameter
-                "alpha": r"$\alpha$" # temporary cross-immunity
+                "rho": r"$\rho$",  # ratio of secondary infections contributing
+                "phi": r"$\phi$",  # import parameter
+                "alpha": r"$\alpha$",  # temporary cross-immunity
             }
         )
         self.model_type = "SIR2Strain"
@@ -1652,18 +1638,7 @@ class SIR2Strain(ContinuousModel):
     """
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
-        (
-            S,
-            I1,
-            I2,
-            R1,
-            R2,
-            S1,
-            S2,
-            I12,
-            I21,
-            R
-        ) = y
+        (S, I1, I2, R1, R2, S1, S2, I12, I21, R) = y
         beta, gamma, mu, rho, phi, alpha, N = (
             params["beta"],
             params["gamma"],
@@ -1671,18 +1646,23 @@ class SIR2Strain(ContinuousModel):
             params["rho"],
             params["phi"],
             params["alpha"],
-            params["N"]
+            params["N"],
         )
-        return [- beta/N * S * (I1 + rho * N + phi * I21) - beta/N * S * (I2 + rho * N + phi * I12) + mu * (N-S),
-                beta/N * S * (I1 + rho * N + phi * I21) - (gamma + mu) * I1,
-                beta/N * S * (I2 + rho * N + phi * I12) - (gamma + mu) * I2,
-                gamma * I1 - (alpha + mu) * R1,
-                gamma * I2 - (alpha + mu) * R2,
-                - beta/N * S1 * (I2 + rho * N + phi * I12) + alpha * R1 - mu * S1,
-                - beta/N * S2 * (I1 + rho * N + phi * I21) + alpha * R2 - mu * S2,
-                beta/N * S1 * (I2 + rho * N + phi * I12) - (gamma + mu) * I12,
-                beta/N * S2 * (I1 + rho * N + phi * I21) - (gamma + mu) * I21,
-                gamma * (I12 + I21) - mu * R]
+        return [
+            -beta / N * S * (I1 + rho * N + phi * I21)
+            - beta / N * S * (I2 + rho * N + phi * I12)
+            + mu * (N - S),
+            beta / N * S * (I1 + rho * N + phi * I21) - (gamma + mu) * I1,
+            beta / N * S * (I2 + rho * N + phi * I12) - (gamma + mu) * I2,
+            gamma * I1 - (alpha + mu) * R1,
+            gamma * I2 - (alpha + mu) * R2,
+            -beta / N * S1 * (I2 + rho * N + phi * I12) + alpha * R1 - mu * S1,
+            -beta / N * S2 * (I1 + rho * N + phi * I21) + alpha * R2 - mu * S2,
+            beta / N * S1 * (I2 + rho * N + phi * I12) - (gamma + mu) * I12,
+            beta / N * S2 * (I1 + rho * N + phi * I21) - (gamma + mu) * I21,
+            gamma * (I12 + I21) - mu * R,
+        ]
+
 
 class SISLogistic(ContinuousModel):
     """
@@ -1754,3 +1734,207 @@ S --> |$$r(1-N/k)$$| S
 
         return [dS, dI]
 
+
+class SIRSEIData(ContinuousModel):
+    """
+    SIR–SEI Vector-Borne Disease Model with Real Climate Data.
+
+    This model is based on the SIRSEI model but accepts real temperature and
+    precipitation data through interpolation functions, instead of using
+    sinusoidal approximations.
+
+    Based on 'Modelling Climate Change and on Malaria Transmission
+    (Parham and Michael, 2010)'.
+
+    Humans:
+        Sh : Susceptible Humans
+        Ih : Infectious Humans
+        Rh : Recovered Humans
+
+    Mosquitoes:
+        Sv : Susceptible Mosquitoes
+        Ev : Exposed Mosquitoes
+        Iv : Infectious Mosquitoes
+
+    Transmission:
+        Mosquito → Human: a * b2
+        Human → Mosquito: a * b1
+
+    Climate Data:
+        Temperature and precipitation are provided as interpolation functions
+        that map time to climate values, allowing the use of real observed data.
+
+    Basic Reproduction Number:
+
+        R0 = sqrt( (a² b1 b2 b3) / ((b3 + l + μ) γ μ) )
+
+    where:
+        a   : biting rate
+        b1  : human → mosquito transmission probability
+        b2  : mosquito → human transmission probability
+        b3  : mosquito incubation rate
+        μ  : mosquito mortality
+        l   : mosquito latent-stage mortality
+        γ   : human recovery rate
+    """
+
+    def __init__(self, temp_func=None, precip_func=None):
+        super().__init__()
+        self.state_variables = OrderedDict(
+            {
+                "Sh": "Susceptible Humans",
+                "Ih": "Infectious Humans",
+                "Rh": "Recovered Humans",
+                "Sv": "Susceptible Mosquitoes",
+                "Ev": "Exposed Mosquitoes",
+                "Iv": "Infectious Mosquitoes",
+            }
+        )
+        self.parameters = OrderedDict(
+            {
+                "b1": r"$b_1$",
+                "b2": r"$b_2$",
+                "gamma": r"$\gamma$",
+                "mu_H": r"$\mu_H$",
+                "BE": r"$B_E$",
+                "pME": r"$p_{ME}$",
+                "pML": r"$p_{ML}$",
+                "pMP": r"$p_{MP}$",
+                "tauE": r"$\tau_E$",
+                "tauP": r"$\tau_P$",
+                "c1": r"$c_1$",
+                "c2": r"$c_2$",
+                "D1": r"$D_1$",
+                "RL": r"$R_L$",
+                "DD": r"$DD$",
+                "Tmin": r"$T_{min}$",
+                "A": r"$A$",
+                "B": r"$B$",
+                "C": r"$C$",
+                "T_prime": r"$T'$",
+            }
+        )
+        self.model_type = "SIR-SEI-Data"
+        self.temp_func = temp_func
+        self.precip_func = precip_func
+
+    def set_climate_functions(self, temp_func, precip_func):
+        """
+        Set the interpolation functions for temperature and precipitation.
+
+        Parameters:
+        -----------
+        temp_func : callable
+            Function that takes time (float) and returns temperature (float)
+        precip_func : callable
+            Function that takes time (float) and returns precipitation (float)
+        """
+        self.temp_func = temp_func
+        self.precip_func = precip_func
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+        subgraph Humans
+        Sh(S_h)
+        Ih(I_h)
+        Rh(R_h)
+        end
+
+        subgraph Mosquitoes
+        Sv(S_v)
+        Ev(E_v)
+        Iv(I_v)
+        end
+
+        Iv -->|$$a b_2$$| Sh
+        Sh -->|$$a b_2 I_v/N$$| Ih
+        Ih -->|$$\gamma$$| Rh
+
+        Ih -->|$$a b_1$$| Sv
+        Sv -->|$$a b_1 I_h/N$$| Ev
+        Ev -->|$$b_3$$| Iv
+        """
+
+    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
+        """
+        Compute derivatives for the SIRSEI model with real climate data.
+
+        Parameters:
+        -----------
+        t : float
+            Current time point
+        y : list[float]
+            State variables [Sh, Ih, Rh, Sv, Ev, Iv]
+        params : dict[str, float]
+            Model parameters
+
+        Returns:
+        --------
+        list[float]
+            Derivatives [dSh, dIh, dRh, dSv, dEv, dIv]
+        """
+        Sh, Ih, Rh, Sv, Ev, Iv = y
+        N = Sh + Ih + Rh
+
+        if self.temp_func is not None and self.precip_func is not None:
+            T = float(self.temp_func(t))
+            R = float(self.precip_func(t))
+        else:
+            raise ValueError(
+                "Temperature and precipitation functions must be provided. "
+                "Use set_climate_functions() or provide them in the constructor."
+            )
+
+        a = (T - params["T_prime"]) / params["D1"]
+        a = max(a, 0)
+
+        p_survive = np.exp(-1 / (params["A"] * T**2 + params["B"] * T + params["C"]))
+        p_survive = np.clip(p_survive, 0, 1)
+
+        mu = -np.log(p_survive)
+        mu = max(mu, 1e-10)
+
+        tau_M = params["DD"] / (T - params["Tmin"])
+        if tau_M <= 0:
+            tau_M = 1.0
+        b3 = 1 / tau_M
+
+        l = p_survive**tau_M
+        l = np.clip(l, 0, 1)
+
+        tau_L = 1 / (params["c1"] * T + params["c2"])
+        if tau_L <= 0:
+            tau_L = 1.0
+
+        pL_R = (4 * params["pML"] / params["RL"] ** 2) * R * (params["RL"] - R)
+        pL_R = max(pL_R, 0)
+
+        pL_T = np.exp(-(params["c1"] * T + params["c2"]))
+        p_L = pL_R * pL_T
+        p_L = np.clip(p_L, 0, 1)
+
+        b = (
+            params["BE"]
+            * params["pME"]
+            * p_L
+            * params["pMP"]
+            / (params["tauE"] + tau_L + params["tauP"])
+        )
+
+        b1 = params["b1"]
+        b2 = params["b2"]
+        gamma = params["gamma"]
+
+        dSh = params["mu_H"] * N - a * b2 * (Iv / N) * Sh
+        dIh = a * b2 * (Iv / N) * Sh - gamma * Ih
+        dRh = gamma * Ih
+
+        dSv = b - a * b1 * (Ih / N) * Sv - mu * Sv
+
+        dEv = a * b1 * (Ih / N) * Sv - mu * Ev - b3 * Ev - l * Ev
+
+        dIv = b3 * Ev - mu * Iv
+
+        return [dSh, dIh, dRh, dSv, dEv, dIv]
