@@ -1857,6 +1857,43 @@ class SIRSEIData(ContinuousModel):
         Ev -->|$$b_3$$| Iv
         """
 
+    def R0_t(self, t: float) -> float | None:
+        """
+        Time-dependent reproduction number based on climate data.
+
+        Uses real temperature data from temp_func to compute R0.
+
+        Returns:
+            float: Time-dependent R0 value
+        """
+        if not hasattr(self, "param_values") or not self.param_values:
+            return None
+
+        p = self.param_values
+
+        if self.temp_func is not None:
+            T = float(self.temp_func(t))
+        else:
+            return None
+
+        a = (T - p["T_prime"]) / p["D1"]
+
+        p_survive = np.exp(-1 / (p["A"] * T**2 + p["B"] * T + p["C"]))
+        p_survive = np.clip(p_survive, 0, 1)
+
+        mu = -np.log(p_survive)
+        mu = max(mu, 1e-10)
+
+        tau_M = p["DD"] / (T - p["Tmin"])
+        if tau_M <= 0:
+            tau_M = 1.0
+        b3 = 1 / tau_M
+
+        l = p_survive**tau_M
+        l = np.clip(l, 0, 1)
+
+        return float(np.sqrt((a**2 * p["b1"] * p["b2"] * b3) / ((b3 + l + mu) * p["gamma"] * mu)))
+
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         """
         Compute derivatives for the SIRSEI model with real climate data.
