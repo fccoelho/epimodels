@@ -5,6 +5,7 @@ license: GPL V3 or Later
 """
 
 import numpy as np
+import sympy as sp
 from epimodels import BaseModel
 import logging
 from collections import OrderedDict
@@ -1788,6 +1789,15 @@ class NeipelHeterogeneousSIR(ContinuousModel):
         )
         self.model_type = "NeipelHeterogeneousSIR"
 
+        # Fórmulas simbólicas para compatibilidade com os testes avançados
+        I, tau = sp.symbols("I tau")
+        beta, gamma, alpha, I0, N = sp.symbols("beta gamma alpha I0 N")
+
+        self._formulas = {
+            "I": I * beta * (1 - I0 / N) * (1 + tau / alpha) ** (-(alpha + 1)) - gamma * I,
+            "tau": beta * I / N,
+        }
+
     @property
     def diagram(self) -> str:
         return r"""flowchart LR
@@ -1804,8 +1814,7 @@ I -->|$$\gamma$$| R(Removed)
 
     def susceptible(self, tau: float, N: float, I0: float, alpha: float) -> float:
         return (N - I0) * (1 + tau / alpha) ** (-alpha)
-    
-    
+
     def removed(self, I: float, tau: float, N: float, I0: float, alpha: float) -> float:
         S = self.susceptible(tau, N, I0, alpha)
         return N - S - I
@@ -1822,4 +1831,3 @@ I -->|$$\gamma$$| R(Removed)
         dtau = beta * I / N
 
         return [dI, dtau]
-    
