@@ -1754,3 +1754,41 @@ S --> |$$r(1-N/k)$$| S
 
         return [dS, dI]
 
+class SIRNonAutonomous(ContinuousModel):
+    """
+    SIRS model with time-dependent parameters.
+
+    Includes waning immunity: R -> S with rate alpha(t)
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        self.state_variables = OrderedDict({
+            "S": "Susceptible",
+            "I": "Infectious",
+            "R": "Recovered"
+        })
+
+        self.parameters = OrderedDict({
+            "alpha": r"$\alpha(t)$",
+            "beta": r"$\beta(t)$",
+            "gamma": r"$\gamma(t)$"
+        })
+
+        self.model_type = "SIRS Non-Autonomous"
+
+    def _model(self, t: float, y: list[float], params: dict):
+        S, I, R = y
+        N = params["N"]
+
+        # parâmetros dependentes do tempo
+        alpha = params["alpha"](t)
+        beta = params["beta"](t)
+        gamma = params["gamma"](t)
+
+        dSdt = -beta * S * I / N + alpha * R/N
+        dIdt = beta * S * I / N - gamma * I/N
+        dRdt = gamma * I/N - alpha * R/N
+
+        return [dSdt, dIdt, dRdt]
