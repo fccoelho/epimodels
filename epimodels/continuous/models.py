@@ -1754,7 +1754,7 @@ S --> |$$r(1-N/k)$$| S
 
         return [dS, dI]
 
-class SIRNonAutonomous(ContinuousModel):
+class SIRSNonAutonomous(ContinuousModel):
     """
     SIRS model with time-dependent parameters.
 
@@ -1789,6 +1789,6 @@ class SIRNonAutonomous(ContinuousModel):
 
         dSdt = -beta * S * I / N + alpha * R/N
         dIdt = beta * S * I / N - gamma * I/N
-        dRdt = gamma * I/N - alpha * R/N
+        dRdt = gamma * I/N - alpha * R
 
         return [dSdt, dIdt, dRdt]
