@@ -1975,39 +1975,15 @@ S --> |$$r(1-N/k)$$| S
         dI = beta * S * I / N - gamma * I
 
         return [dS, dI]
-class NeipelHeterogeneousSIR(ContinuousModel):
+class SIRSNonAutonomous(ContinuousModel):
     """
-    Heterogeneous SIR model based on Neipel et al. (2020).
+    SIRS model with time-dependent parameters.
 
-    State Variables:
-        - I: Infectious individuals
-        - tau: epidemic progress variable
-
-    Derived quantities:
-        - S(t) = (N - I0) * (1 + tau/alpha)^(-alpha)
-        - R(t) = N - S(t) - I(t)
-
-    Parameters:
-        - beta: transmission rate
-        - gamma: recovery rate
-        - alpha: susceptibility heterogeneity exponent
-        - I0: initial number of infectious individuals
+    Includes waning immunity: R -> S with rate alpha(t)
     """
 
     def __init__(self):
         super().__init__()
-        self.state_variables = OrderedDict(
-            {"I": "Infectious", "tau": "Epidemic progress"}
-        )
-        self.parameters = OrderedDict(
-            {
-                "beta": r"$\beta$",
-                "gamma": r"$\gamma$",
-                "alpha": r"$\alpha$",
-                "I0": r"$I_0$",
-            }
-        )
-        self.model_type = "NeipelHeterogeneousSIR"
 
         # Fórmulas simbólicas para compatibilidade com os testes avançados
         I, tau = sp.symbols("I tau")
@@ -2018,22 +1994,6 @@ class NeipelHeterogeneousSIR(ContinuousModel):
             "tau": beta * I / N,
         }
 
-    @property
-    def diagram(self) -> str:
-        return r"""flowchart LR
-
-S(Susceptible heterogeneous) -->|$$\beta, \alpha$$| I(Infectious)
-I -->|$$\gamma$$| R(Removed)
-"""
-
-    @property
-    def R0(self) -> float | None:
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
-
-    def susceptible(self, tau: float, N: float, I0: float, alpha: float) -> float:
-        return (N - I0) * (1 + tau / alpha) ** (-alpha)
 
     def removed(self, I: float, tau: float, N: float, I0: float, alpha: float) -> float:
         S = self.susceptible(tau, N, I0, alpha)
@@ -2102,21 +2062,18 @@ I -->|$$\gamma$$| R(Removed)
     def susceptible(self, tau: float, N: float, I0: float, alpha: float) -> float:
         return (N - I0) * (1 + tau / alpha) ** (-alpha)
 
-    def removed(self, I: float, tau: float, N: float, I0: float, alpha: float) -> float:
-        S = self.susceptible(tau, N, I0, alpha)
-        return N - S - I
+        self.model_type = "SIRS Non-Autonomous"
 
-    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
-        I, tau = y
-        beta = params["beta"]
-        gamma = params["gamma"]
-        alpha = params["alpha"]
-        I0 = params["I0"]
+    def _model(self, t: float, y: list[float], params: dict):
+        S, I, R = y
         N = params["N"]
 
-        dI = I * beta * (1 - I0 / N) * (1 + tau / alpha) ** (-(alpha + 1)) - gamma * I
-        dtau = beta * I / N
+        # parâmetros dependentes do tempo
+        alpha = params["alpha"](t)
+        beta = params["beta"](t)
+        gamma = params["gamma"](t)
 
-        return [dI, dtau]
-    
-__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "NeipelHeterogeneousSIR"]
+        dSdt = -beta * S * I / N + alpha * R/N
+        dIdt = beta * S * I / N - gamma * I/N
+        dRdt = gamma * I/N - alpha * R
+

@@ -896,11 +896,13 @@ class SymbolicModel:
 
         Args:
             eq: Equilibrium dictionary
+            tolerance: Tolerance for considering infected compartment as zero
 
         Returns:
             'dfe' or 'endemic'
         """
         infected_vars = self._identify_infected_compartments()
+        tolerance = 1e-10
 
         for var_name in infected_vars:
             value = eq.get(var_name, 0)
@@ -913,7 +915,7 @@ class SymbolicModel:
                     # Symbolic and non-zero, likely endemic
                     return "endemic"
 
-            if value != 0:
+            if abs(value) > tolerance:
                 return "endemic"
 
         return "dfe"
