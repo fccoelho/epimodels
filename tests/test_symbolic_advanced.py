@@ -261,8 +261,9 @@ class TestSensitivityAnalysis:
 
     def test_compute_sensitivity_matrix(self, sir_model):
         """Test sensitivity matrix computation."""
+        params = {"beta": 0.3, "gamma": 0.1, "mu": 0.01, "N": 1000}
         sensitivity_matrix = sir_model.compute_sensitivity_matrix(
-            output_vars=["S", "I"], params=["beta", "gamma"]
+            params=params, output_vars=["S", "I"], param_list=["beta", "gamma"]
         )
 
         assert "S" in sensitivity_matrix
