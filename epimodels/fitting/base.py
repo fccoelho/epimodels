@@ -74,6 +74,7 @@ class InitialConditionSpec:
     state_variable: str
     bounds: tuple[float, float]
     initial: float | None = None
+    fixed: bool = False
 
 
 @dataclass
@@ -167,6 +168,8 @@ class ModelFitter:
 
         self._param_order = [p.name for p in parameters_to_fit]
         self._ic_order: list[str] = []
+        self._fixed_ics: dict[str, float] = {}
+        self._fitted_ic_specs: list[InitialConditionSpec] = []
 
         if self.fit_initial_conditions:
             self._setup_initial_condition_fitting()
@@ -217,7 +220,20 @@ class ModelFitter:
                         )
                     )
 
-        self._ic_order = [ic.state_variable for ic in self.initial_condition_specs]
+        self._fixed_ics = {}
+        self._fitted_ic_specs = []
+        for ic_spec in self.initial_condition_specs:
+            if ic_spec.fixed:
+                if ic_spec.initial is None:
+                    raise FittingError(
+                        f"Initial condition for '{ic_spec.state_variable}' is marked as fixed "
+                        f"but no initial value provided"
+                    )
+                self._fixed_ics[ic_spec.state_variable] = ic_spec.initial
+            else:
+                self._fitted_ic_specs.append(ic_spec)
+
+        self._ic_order = [ic.state_variable for ic in self._fitted_ic_specs]
 
     def _get_bounds(self) -> list[tuple[float, float]]:
         """Get parameter bounds for optimization."""
@@ -227,7 +243,7 @@ class ModelFitter:
             bounds.append(spec.bounds)
 
         if self.fit_initial_conditions:
-            for ic_spec in self.initial_condition_specs:
+            for ic_spec in self._fitted_ic_specs:
                 bounds.append(ic_spec.bounds)
 
         return bounds
@@ -248,7 +264,7 @@ class ModelFitter:
                     initial.append((lower + upper) / 2)
 
         if self.fit_initial_conditions:
-            for ic_spec in self.initial_condition_specs:
+            for ic_spec in self._fitted_ic_specs:
                 if ic_spec.initial is not None:
                     initial.append(ic_spec.initial)
                 else:
@@ -300,6 +316,16 @@ class ModelFitter:
 
         if initial_conditions is None:
             initial_conditions = self._estimate_initial_conditions()
+        elif self.fit_initial_conditions and self._fixed_ics:
+            merged_ic = {}
+            var_list = list(model.state_variables.keys())
+            for i, var_name in enumerate(var_list):
+                if var_name in self._fixed_ics:
+                    merged_ic[var_name] = self._fixed_ics[var_name]
+                else:
+                    ic_idx = self._ic_order.index(var_name)
+                    merged_ic[var_name] = initial_conditions[ic_idx]
+            initial_conditions = [merged_ic[var] for var in var_list]
 
         model(
             inits=initial_conditions,
@@ -429,6 +455,16 @@ class ModelFitter:
 
         if best_ic is None:
             best_ic = self._estimate_initial_conditions()
+        elif self.fit_initial_conditions and self._fixed_ics:
+            merged_ic = {}
+            var_list = list(fitted_model.state_variables.keys())
+            for i, var_name in enumerate(var_list):
+                if var_name in self._fixed_ics:
+                    merged_ic[var_name] = self._fixed_ics[var_name]
+                else:
+                    ic_idx = self._ic_order.index(var_name)
+                    merged_ic[var_name] = best_ic[ic_idx]
+            best_ic = [merged_ic[var] for var in var_list]
 
         time_range = self.dataset.time_range
         if time_range is not None:
@@ -502,6 +538,7 @@ class ModelFitter:
                 loss_fn=self.loss_fn,
                 optimizer=self.optimizer,
                 fit_initial_conditions=self.fit_initial_conditions,
+                initial_condition_specs=self.initial_condition_specs,
                 fixed_params={**self.fixed_params, param_name: val},
                 solver_options=self.solver_options,
             )
