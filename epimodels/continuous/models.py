@@ -1529,6 +1529,7 @@ class SIRSEI(ContinuousModel):
         plt.tight_layout()
         plt.show()
 
+
 class SIRSEIData(ContinuousModel):
     """
     SIR–SEI Vector-Borne Disease Model with Real Climate Data.
@@ -1771,6 +1772,510 @@ class SIRSEIData(ContinuousModel):
         return [dSh, dIh, dRh, dSv, dEv, dIv]
 
 
+class SEIRS_SEI(ContinuousModel):
+    """
+    SEIRS-SEI Vector-Borne Disease Model with Environmental Modifications.
+
+    This model extends the SIR-SEI framework to include:
+    - Human exposed compartment (E_H) for incubation period
+    - Waning immunity (SEIRS instead of SIRS)
+    - Environmental modifications: deforestation and fire effects
+    - Dengue fever dynamics with humidity effects
+
+    Based on models developed for malaria transmission in the Amazon region.
+
+    Human Compartments (SEIRS):
+        S_H : Susceptible Humans
+        E_H : Exposed Humans (incubating, not yet infectious)
+        I_H : Infectious Humans
+        R_H : Recovered Humans (immune)
+
+    Mosquito Compartments (SEI):
+        S_M : Susceptible Mosquitoes
+        E_M : Exposed Mosquitoes
+        I_M : Infectious Mosquitoes
+
+    Environmental Drivers:
+        - Temperature, Precipitation, Humidity (climate data)
+        - Deforestation (DETER data): increases breeding sites
+        - Forest Fires (INPE data): smoke reduces biting rate
+
+    Delay Parameters:
+        - tau_H: Human incubation period (exposed -> infectious)
+        - tau_M: Sporogonic cycle duration (mosquito exposed -> infectious)
+
+    Reference:
+        Inspired by Parham & Michael (2010) and Amazon malaria studies.
+
+    Example:
+        >>> model = SEIRS_SEI()
+        >>> model([S_H0, E_H0, I_H0, R_H0, S_M0, E_M0, I_M0],
+        ...        [0, 365], totpop, params,
+        ...        temp_func=temp_interp, precip_func=precip_interp,
+        ...        umid_func=umid_interp, fire_func=fire_interp,
+        ...        defor_func=defor_interp)
+    """
+
+    def __init__(
+        self,
+        temp_func=None,
+        precip_func=None,
+        umid_func=None,
+        fire_func=None,
+        defor_func=None,
+    ):
+        """
+        Initialize SEIRS-SEI model with optional environmental data functions.
+
+        Parameters:
+        -----------
+        temp_func : callable, optional
+            Function that takes time (float) and returns temperature (float)
+        precip_func : callable, optional
+            Function that takes time (float) and returns precipitation (float)
+        umid_func : callable, optional
+            Function that takes time (float) and returns humidity (float)
+        fire_func : callable, optional
+            Function that takes time (float) and returns fire count (float)
+        defor_func : callable, optional
+            Function that takes time (float) and returns deforestation (float)
+        """
+        super().__init__()
+        self.state_variables = OrderedDict(
+            {
+                "S_H": "Susceptible Humans",
+                "E_H": "Exposed Humans",
+                "I_H": "Infectious Humans",
+                "R_H": "Recovered Humans",
+                "S_M": "Susceptible Mosquitoes",
+                "E_M": "Exposed Mosquitoes",
+                "I_M": "Infectious Mosquitoes",
+            }
+        )
+        self.parameters = OrderedDict(
+            {
+                "b1": r"$b_1$",
+                "b2": r"$b_2$",
+                "gamma": r"$\gamma$",
+                "r_H": r"$r_H$",
+                "omega": r"$\omega$",
+                "tau_H": r"$\tau_H$",
+                "BE": r"$B_E$",
+                "pME": r"$p_{ME}$",
+                "pML": r"$p_{ML}$",
+                "pMP": r"$p_{MP}$",
+                "tauE": r"$\tau_E$",
+                "tauP": r"$\tau_P$",
+                "c1": r"$c_1$",
+                "c2": r"$c_2$",
+                "D1": r"$D_1$",
+                "A": r"$A$",
+                "B": r"$B$",
+                "C": r"$C$",
+                "DD": r"$DD$",
+                "Tmin": r"$T_{min}$",
+                "T_prime": r"$T'$",
+                "R_L": r"$R_L$",
+                "defor_max_effect": r"$defor_{max}$",
+                "defor_scale": r"$defor_{scale}$",
+                "defor_delay": r"$defor_{delay}$",
+                "fire_smoke_effect": r"$fire_{smoke}$",
+                "fire_habitat_effect": r"$fire_{habitat}$",
+                "fire_recovery_delay": r"$fire_{delay}$",
+            }
+        )
+        self.model_type = "SEIRS-SEI"
+        self.temp_func = temp_func
+        self.precip_func = precip_func
+        self.umid_func = umid_func
+        self.fire_func = fire_func
+        self.defor_func = defor_func
+        self._history = []
+        self._history_length = 100
+
+    def set_climate_functions(
+        self,
+        temp_func=None,
+        precip_func=None,
+        umid_func=None,
+        fire_func=None,
+        defor_func=None,
+    ):
+        """
+        Set the interpolation functions for environmental data.
+
+        Parameters:
+        -----------
+        temp_func : callable
+            Function that takes time (float) and returns temperature (float)
+        precip_func : callable
+            Function that takes time (float) and returns precipitation (float)
+        umid_func : callable
+            Function that takes time (float) and returns humidity (float)
+        fire_func : callable
+            Function that takes time (float) and returns fire count (float)
+        defor_func : callable
+            Function that takes time (float) and returns deforestation (float)
+        """
+        self.temp_func = temp_func
+        self.precip_func = precip_func
+        self.umid_func = umid_func
+        self.fire_func = fire_func
+        self.defor_func = defor_func
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the compartmental model"""
+        return r"""flowchart LR
+        subgraph Humans
+        S_H(S_h) -->|"$$\lambda_H$$"| E_H(E_h)
+        E_H -->|"$$\tau_H$$"| I_H(I_h)
+        I_H -->|"$$\gamma$$"| R_H(R_h)
+        R_H -->|"$$\omega$$"| S_H
+        end
+
+        subgraph Mosquitoes
+        S_M(S_m) -->|"$$\lambda_M$$"| E_M(E_m)
+        E_M -->|"$$\tau_M$$"| I_M(I_m)
+        end
+
+        I_M -->|"$$a b_2$$"| S_H
+        I_H -->|"$$a b_1$$"| S_M
+
+        classDef human fill:#ffcccc,stroke:#ff0000
+        classDef mosquito fill:#ccffcc,stroke:#00ff00
+
+        class S_H,E_H,I_H,R_H human
+        class S_M,E_M,I_M mosquito
+        """
+
+    def _tau_L(self, T: float) -> float:
+        """Larval development duration."""
+        c1 = self.param_values.get("c1", 0.00554)
+        c2 = self.param_values.get("c2", -0.06737)
+        denom = c1 * T + c2
+        if denom <= 0:
+            return 100.0
+        return 1.0 / denom
+
+    def _p_T(self, T: float, U: float) -> float:
+        """Daily mosquito survival probability (temperature and humidity dependent)."""
+        A = self.param_values.get("A", 12.5)
+        B = self.param_values.get("B", 15.0)
+        C = self.param_values.get("C", -48.78)
+        denom = A * T**2 + B * T + C
+        if denom >= 0:
+            p_T_temp = 0.85
+        else:
+            p_T_temp = np.exp(-1.0 / denom)
+        if U < 50:
+            p_U = 0.0
+        elif U < 60:
+            p_U = (U - 50) / 10.0
+        else:
+            p_U = 1.0
+        return p_T_temp * p_U
+
+    def _p_LT(self, T: float) -> float:
+        """Larval survival probability (temperature)."""
+        c1 = self.param_values.get("c1", 0.00554)
+        c2 = self.param_values.get("c2", -0.06737)
+        exponent = c1 * T + c2
+        if exponent > 10:
+            return 0.0
+        return np.exp(-exponent)
+
+    def _p_LR(self, R: float, R_L: float, p_ML: float) -> float:
+        """Larval survival probability due to rain."""
+        if R < 0 or R > R_L:
+            return 0.0
+        return (4.0 * p_ML / R_L**2) * R * (R_L - R)
+
+    def _p_ER(self, R: float, R_L: float, p_ME: float) -> float:
+        """Egg survival probability due to rain."""
+        if R < 0 or R > R_L:
+            return 0.0
+        return (4.0 * p_ME / R_L**2) * R * (R_L - R)
+
+    def _p_PR(self, R: float, R_L: float, p_MP: float) -> float:
+        """Pupae survival probability due to rain."""
+        if R < 0 or R > R_L:
+            return 0.0
+        return (4.0 * p_MP / R_L**2) * R * (R_L - R)
+
+    def _tau_M(self, T: float) -> float:
+        """Sporogonic cycle duration."""
+        DD = self.param_values.get("DD", 105.0)
+        Tmin = self.param_values.get("Tmin", 14.5)
+        if T <= Tmin:
+            return 50.0
+        return DD / (T - Tmin)
+
+    def _mu(self, T: float, U: float) -> float:
+        """Mosquito mortality rate."""
+        p_T_val = self._p_T(T, U)
+        if p_T_val <= 0:
+            return 0.15
+        mu_val = -np.log(p_T_val)
+        return min(mu_val, 0.3)
+
+    def _a(self, T: float) -> float:
+        """Mosquito biting rate (base function)."""
+        T_prime = self.param_values.get("T_prime", 25.6)
+        D1 = self.param_values.get("D1", 4.0)
+        a_val = np.maximum(0, (T - T_prime) / D1)
+        return np.minimum(a_val, 0.8)
+
+    def _a_with_fire(self, T: float, fire_counts: float) -> float:
+        """Mosquito biting rate with fire/smoke effect."""
+        base_rate = self._a(T)
+        fire_smoke_effect = self.param_values.get("fire_smoke_effect", 0.4)
+        fire_intensity = min(fire_counts / 50.0, 1.0)
+        smoke_reduction = fire_smoke_effect * fire_intensity
+        return base_rate * (1 - smoke_reduction)
+
+    def _b_rate(
+        self, R: float, T: float, R_L: float, p_ME: float, p_ML: float, p_MP: float
+    ) -> float:
+        """Mosquito recruitment rate (base function)."""
+        tau_L_curr = self._tau_L(T)
+        if tau_L_curr <= 0:
+            return 0.0
+        tau_E = self.param_values.get("tauE", 1.0)
+        tau_P = self.param_values.get("tauP", 1.0)
+        BE = self.param_values.get("BE", 200.0)
+        numerator = (
+            BE
+            * self._p_ER(R, R_L, p_ME)
+            * self._p_LR(R, R_L, p_ML)
+            * self._p_LT(T)
+            * self._p_PR(R, R_L, p_MP)
+        )
+        denominator = tau_E + tau_L_curr + tau_P
+        if denominator <= 0:
+            return 0.0
+        return numerator / denominator
+
+    def _b_rate_with_environment(
+        self,
+        R: float,
+        T: float,
+        R_L: float,
+        p_ME: float,
+        p_ML: float,
+        p_MP: float,
+        fire_counts: float,
+        total_defor: float,
+    ) -> float:
+        """Mosquito recruitment rate with environmental modifications."""
+        base_rate = self._b_rate(R, T, R_L, p_ME, p_ML, p_MP)
+        defor_max_effect = self.param_values.get("defor_max_effect", 0.3)
+        defor_scale = self.param_values.get("defor_scale", 0.0001)
+        fire_habitat_effect = self.param_values.get("fire_habitat_effect", 0.2)
+        defor_effect = min(total_defor * defor_scale, defor_max_effect)
+        fire_intensity = min(fire_counts / 50.0, 1.0)
+        fire_habitat_destruction = fire_habitat_effect * fire_intensity
+        net_effect = (1 + defor_effect) * (1 - fire_habitat_destruction)
+        return base_rate * net_effect
+
+    def _mu_with_fire(self, T: float, U: float, fire_counts: float) -> float:
+        """Mosquito mortality rate with fire effect."""
+        base_mu = self._mu(T, U)
+        fire_intensity = min(fire_counts / 50.0, 1.0)
+        fire_mortality_increase = 0.15 * fire_intensity
+        return min(base_mu + fire_mortality_increase, 0.5)
+
+    def _get_delayed_state(self, t: float, delay: float) -> tuple:
+        """Get delayed state from history buffer."""
+        tau_safe = min(max(delay, 1), 100)
+        delayed_t = t - tau_safe
+        if delayed_t < 0:
+            if len(self._history) > 0:
+                return self._history[0]
+            return None
+        idx = int(delayed_t)
+        if idx < len(self._history):
+            return self._history[idx]
+        return self._history[-1] if self._history else None
+
+    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
+        """
+        Compute derivatives for the SEIRS-SEI model.
+
+        Parameters:
+        -----------
+        t : float
+            Current time point
+        y : list[float]
+            State variables [S_H, E_H, I_H, R_H, S_M, E_M, I_M]
+        params : dict[str, float]
+            Model parameters
+
+        Returns:
+        --------
+        list[float]
+            Derivatives [dS_H, dE_H, dI_H, dR_H, dS_M, dE_M, dI_M]
+        """
+        S_H, E_H, I_H, R_H, S_M, E_M, I_M = y
+        N = S_H + E_H + I_H + R_H
+
+        self._history.append([S_H, E_H, I_H, R_H, S_M, E_M, I_M])
+        if len(self._history) > self._history_length:
+            self._history.pop(0)
+
+        T = float(self.temp_func(t)) if self.temp_func else 27.0
+        R = float(self.precip_func(t)) if self.precip_func else 5.0
+        U = float(self.umid_func(t)) if self.umid_func else 80.0
+        fire_counts = float(self.fire_func(t)) if self.fire_func else 0.0
+        total_defor = float(self.defor_func(t)) if self.defor_func else 0.0
+
+        b1 = params["b1"]
+        b2 = params["b2"]
+        gamma = params["gamma"]
+        r_H = params["r_H"]
+        omega = params["omega"]
+        tau_H = params["tau_H"]
+        R_L = params["R_L"]
+        M = params.get("M", 100000.0)
+        p_ME = params["pME"]
+        p_ML = params["pML"]
+        p_MP = params["pMP"]
+
+        defor_max_effect = params.get("defor_max_effect", 0.3)
+        defor_scale = params.get("defor_scale", 0.0001)
+        defor_delay = params.get("defor_delay", 14)
+        fire_smoke_effect = params.get("fire_smoke_effect", 0.4)
+        fire_habitat_effect = params.get("fire_habitat_effect", 0.2)
+        fire_recovery_delay = params.get("fire_recovery_delay", 21)
+
+        delayed_defor = (
+            float(self.defor_func(t - defor_delay))
+            if self.defor_func and t > defor_delay
+            else total_defor
+        )
+
+        a_curr = self._a_with_fire(T, fire_counts)
+        mu_curr = self._mu_with_fire(T, U, fire_counts)
+        tau_M_curr = self._tau_M(T)
+
+        temp_factor = max(0.1, min(1, (T - 15) / 15))
+        rain_factor = min(1, max(0, R / R_L))
+        day_of_year = int(t % 365.25)
+        seasonal_phase = 2 * np.pi * (day_of_year - 180) / 365.25
+        seasonal_factor = 2.5 + 2.0 * np.sin(seasonal_phase)
+
+        defor_cap_factor = 1 + min(total_defor * defor_scale, defor_max_effect)
+        fire_cap_factor = 1 - (fire_habitat_effect * min(fire_counts / 50.0, 1.0))
+        env_cap_factor = defor_cap_factor * max(fire_cap_factor, 0.3)
+        K = M * temp_factor * rain_factor * seasonal_factor * env_cap_factor
+
+        b_curr = self._b_rate_with_environment(
+            R, T, R_L, p_ME, p_ML, p_MP, fire_counts, delayed_defor
+        )
+        total_mosquitoes = S_M + E_M + I_M
+        if K > 0:
+            density_factor = max(0, 1 - total_mosquitoes / K)
+        else:
+            density_factor = 0
+        mosquito_birth = b_curr * density_factor * K
+
+        tau_H_safe = min(max(tau_H, 1), 30)
+        delayed_state_h = self._get_delayed_state(t, tau_H_safe)
+        if delayed_state_h is not None:
+            S_H_delay, E_H_delay, I_H_delay, R_H_delay = delayed_state_h[:4]
+        else:
+            S_H_delay, E_H_delay, I_H_delay, R_H_delay = S_H, E_H, I_H, R_H
+
+        tau_M_safe = min(max(tau_M_curr, 1), 50)
+        delayed_state_m = self._get_delayed_state(t, tau_M_safe)
+        if delayed_state_m is not None:
+            S_M_delay, E_M_delay, I_M_delay = delayed_state_m[4:]
+            I_H_delay_M = delayed_state_m[2]
+        else:
+            S_M_delay, E_M_delay, I_M_delay = S_M, E_M, I_M
+            I_H_delay_M = I_H
+
+        l_curr = np.exp(-mu_curr * tau_M_safe)
+
+        defor_exposure_factor = 1 + min(total_defor * defor_scale, defor_max_effect)
+
+        foi_human = a_curr * b2 * (I_M / N) * defor_exposure_factor
+        new_exposures_h = foi_human * S_H
+
+        foi_human_delay = a_curr * b2 * (I_M_delay / N) * defor_exposure_factor
+        new_infections_h = foi_human_delay * S_H_delay
+
+        recoveries = gamma * I_H
+        immunity_loss = omega * R_H
+
+        dS_H = r_H * N - new_exposures_h + immunity_loss
+        dE_H = new_exposures_h - new_infections_h
+        dI_H = new_infections_h - recoveries
+        dR_H = recoveries - immunity_loss
+
+        foi_mosquito = a_curr * b1 * (I_H / N)
+        new_exposures_m = foi_mosquito * S_M
+
+        foi_mosquito_delay = a_curr * b1 * (I_H_delay_M / N)
+        new_infections_m = foi_mosquito_delay * S_M_delay * l_curr
+
+        dS_M = mosquito_birth - new_exposures_m - mu_curr * S_M
+        dE_M = new_exposures_m - new_infections_m - mu_curr * E_M
+        dI_M = new_infections_m - mu_curr * I_M
+
+        dS_H = max(dS_H, -S_H / 10)
+        dE_H = max(dE_H, -E_H / 10)
+        dI_H = max(dI_H, -I_H / 10)
+        dR_H = max(dR_H, -R_H / 10)
+        dS_M = max(dS_M, -S_M / 10)
+        dE_M = max(dE_M, -E_M / 10)
+        dI_M = max(dI_M, -I_M / 10)
+
+        return [dS_H, dE_H, dI_H, dR_H, dS_M, dE_M, dI_M]
+
+    def R0_t(self, t: float) -> float | None:
+        """
+        Time-dependent reproduction number based on climate data.
+
+        Uses real environmental data from functions to compute R0.
+
+        Returns:
+            float: Time-dependent R0 value
+        """
+        if not hasattr(self, "param_values") or not self.param_values:
+            return None
+
+        p = self.param_values
+
+        if self.temp_func is not None:
+            T = float(self.temp_func(t))
+        else:
+            return None
+
+        U = float(self.umid_func(t)) if self.umid_func else 80.0
+
+        a = self._a(T)
+        if a <= 0:
+            return 0.0
+
+        mu = self._mu(T, U)
+        if mu <= 0:
+            mu = 0.01
+
+        tau_M = self._tau_M(T)
+        b3 = 1 / tau_M if tau_M > 0 else 0.02
+
+        l = np.exp(-mu * tau_M)
+
+        b1 = p.get("b1", 0.5)
+        b2 = p.get("b2", 0.5)
+        gamma = p.get("gamma", 0.01)
+        N = p.get("N", 10000)
+
+        R0_squared = (a**2 * b1 * b2 * b3 * l) / ((b3 + l + mu) * gamma * mu)
+        return float(np.sqrt(np.maximum(R0_squared, 0)))
+
+
 class SIR2Strain(ContinuousModel):
     """
     SIR (Susceptible-Infectious-Removed) Model with two strains.
@@ -1975,6 +2480,8 @@ S --> |$$r(1-N/k)$$| S
         dI = beta * S * I / N - gamma * I
 
         return [dS, dI]
+
+
 class SIRSNonAutonomous(ContinuousModel):
     """
     SIRS model with time-dependent parameters.
@@ -1994,7 +2501,6 @@ class SIRSNonAutonomous(ContinuousModel):
             "tau": beta * I / N,
         }
 
-
     def removed(self, I: float, tau: float, N: float, I0: float, alpha: float) -> float:
         S = self.susceptible(tau, N, I0, alpha)
         return N - S - I
@@ -2011,6 +2517,8 @@ class SIRSNonAutonomous(ContinuousModel):
         dtau = beta * I / N
 
         return [dI, dtau]
+
+
 class NeipelHeterogeneousSIR(ContinuousModel):
     """
     Heterogeneous SIR model based on Neipel et al. (2020).
@@ -2032,9 +2540,7 @@ class NeipelHeterogeneousSIR(ContinuousModel):
 
     def __init__(self):
         super().__init__()
-        self.state_variables = OrderedDict(
-            {"I": "Infectious", "tau": "Epidemic progress"}
-        )
+        self.state_variables = OrderedDict({"I": "Infectious", "tau": "Epidemic progress"})
         self.parameters = OrderedDict(
             {
                 "beta": r"$\beta$",
@@ -2073,7 +2579,6 @@ I -->|$$\gamma$$| R(Removed)
         beta = params["beta"](t)
         gamma = params["gamma"](t)
 
-        dSdt = -beta * S * I / N + alpha * R/N
-        dIdt = beta * S * I / N - gamma * I/N
-        dRdt = gamma * I/N - alpha * R
-
+        dSdt = -beta * S * I / N + alpha * R / N
+        dIdt = beta * S * I / N - gamma * I / N
+        dRdt = gamma * I / N - alpha * R
