@@ -1890,8 +1890,8 @@ class SEIRS_SEI(ContinuousModel):
         self.umid_func = umid_func
         self.fire_func = fire_func
         self.defor_func = defor_func
-        self._history = []
-        self._history_length = 100
+        self._history = {}
+        self._history_length = 3650
 
     def set_climate_functions(
         self,
@@ -2085,18 +2085,34 @@ class SEIRS_SEI(ContinuousModel):
         fire_mortality_increase = 0.15 * fire_intensity
         return min(base_mu + fire_mortality_increase, 0.5)
 
-    def _get_delayed_state(self, t: float, delay: float) -> tuple:
-        """Get delayed state from history buffer."""
+    def _get_delayed_state(self, t: float, delay: float) -> tuple | None:
+        """Get delayed state from history buffer with linear interpolation."""
         tau_safe = min(max(delay, 1), 100)
         delayed_t = t - tau_safe
-        if delayed_t < 0:
-            if len(self._history) > 0:
-                return self._history[0]
-            return None
+
+        if delayed_t <= 0:
+            return self._history.get(0)
+
         idx = int(delayed_t)
-        if idx < len(self._history):
-            return self._history[idx]
-        return self._history[-1] if self._history else None
+        frac = delayed_t - idx
+
+        if frac < 1e-9:
+            return self._history.get(
+                idx, self._history.get(max(self._history.keys(), default=None))
+            )
+
+        state_low = self._history.get(idx)
+        state_high = self._history.get(idx + 1)
+
+        if state_low is None and state_high is None:
+            return self._history.get(max(self._history.keys(), default=None))
+
+        if state_low is None:
+            return state_high
+        if state_high is None:
+            return state_low
+
+        return [state_low[i] + frac * (state_high[i] - state_low[i]) for i in range(len(state_low))]
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         """
@@ -2119,9 +2135,11 @@ class SEIRS_SEI(ContinuousModel):
         S_H, E_H, I_H, R_H, S_M, E_M, I_M = y
         N = S_H + E_H + I_H + R_H
 
-        self._history.append([S_H, E_H, I_H, R_H, S_M, E_M, I_M])
+        self._history[int(t)] = [S_H, E_H, I_H, R_H, S_M, E_M, I_M]
         if len(self._history) > self._history_length:
-            self._history.pop(0)
+            oldest_keys = sorted(self._history.keys())[: len(self._history) - self._history_length]
+            for k in oldest_keys:
+                del self._history[k]
 
         T = float(self.temp_func(t)) if self.temp_func else 27.0
         R = float(self.precip_func(t)) if self.precip_func else 5.0
@@ -2144,7 +2162,6 @@ class SEIRS_SEI(ContinuousModel):
         defor_max_effect = params.get("defor_max_effect", 0.3)
         defor_scale = params.get("defor_scale", 0.0001)
         defor_delay = params.get("defor_delay", 14)
-        fire_smoke_effect = params.get("fire_smoke_effect", 0.4)
         fire_habitat_effect = params.get("fire_habitat_effect", 0.2)
         fire_recovery_delay = params.get("fire_recovery_delay", 21)
 
@@ -2152,6 +2169,12 @@ class SEIRS_SEI(ContinuousModel):
             float(self.defor_func(t - defor_delay))
             if self.defor_func and t > defor_delay
             else total_defor
+        )
+
+        delayed_fire = (
+            float(self.fire_func(t - fire_recovery_delay))
+            if self.fire_func and t > fire_recovery_delay
+            else fire_counts
         )
 
         a_curr = self._a_with_fire(T, fire_counts)
@@ -2165,12 +2188,12 @@ class SEIRS_SEI(ContinuousModel):
         seasonal_factor = 2.5 + 2.0 * np.sin(seasonal_phase)
 
         defor_cap_factor = 1 + min(total_defor * defor_scale, defor_max_effect)
-        fire_cap_factor = 1 - (fire_habitat_effect * min(fire_counts / 50.0, 1.0))
+        fire_cap_factor = 1 - (fire_habitat_effect * min(delayed_fire / 50.0, 1.0))
         env_cap_factor = defor_cap_factor * max(fire_cap_factor, 0.3)
         K = M * temp_factor * rain_factor * seasonal_factor * env_cap_factor
 
         b_curr = self._b_rate_with_environment(
-            R, T, R_L, p_ME, p_ML, p_MP, fire_counts, delayed_defor
+            R, T, R_L, p_ME, p_ML, p_MP, delayed_fire, delayed_defor
         )
         total_mosquitoes = S_M + E_M + I_M
         if K > 0:
