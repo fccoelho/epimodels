@@ -1422,7 +1422,6 @@ class SIRSEI(ContinuousModel):
         return float(np.sqrt((a**2 * p["b1"] * p["b2"] * b3) / ((b3 + l + mu) * p["gamma"] * mu)))
 
     def _model(self, t: float, y: list[float], p: dict[str, float]) -> list[float]:
-
         Sh, Ih, Rh, Sv, Ev, Iv = y
 
         N = Sh + Ih + Rh
@@ -1528,6 +1527,7 @@ class SIRSEI(ContinuousModel):
         plt.title(title, fontsize=14)
         plt.tight_layout()
         plt.show()
+
 
 class SIRSEIData(ContinuousModel):
     """
@@ -1961,7 +1961,6 @@ S --> |$$r(1-N/k)$$| S
         return None
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
-
         S, I = y
 
         beta = params["beta"]
@@ -1984,20 +1983,16 @@ class SIRSNonAutonomous(ContinuousModel):
     Includes waning immunity: R -> S with rate alpha(t)
     """
 
-    def init(self):
-        super().init()
+    def __init__(self):
+        super().__init__()
 
-        self.state_variables = OrderedDict({
-            "S": "Susceptible",
-            "I": "Infectious",
-            "R": "Recovered"
-        })
+        self.state_variables = OrderedDict(
+            {"S": "Susceptible", "I": "Infectious", "R": "Recovered"}
+        )
 
-        self.parameters = OrderedDict({
-            "alpha": r"$\alpha(t)$",
-            "beta": r"$\beta(t)$",
-            "gamma": r"$\gamma(t)$"
-        })
+        self.parameters = OrderedDict(
+            {"alpha": r"$\alpha(t)$", "beta": r"$\beta(t)$", "gamma": r"$\gamma(t)$"}
+        )
 
         self.model_type = "SIRS Non-Autonomous"
 
@@ -2010,12 +2005,13 @@ class SIRSNonAutonomous(ContinuousModel):
         beta = params["beta"](t)
         gamma = params["gamma"](t)
 
-        dSdt = -beta * S * I / N + alpha * R/N
-        dIdt = beta * S * I / N - gamma * I/N
-        dRdt = gamma * I/N - alpha * R
+        dSdt = -beta * S * I / N + alpha * R / N
+        dIdt = beta * S * I / N - gamma * I / N
+        dRdt = gamma * I / N - alpha * R
 
         return [dSdt, dIdt, dRdt]
-    
+
+
 class NeipelHeterogeneousSIR(ContinuousModel):
     """
     Heterogeneous SIR model based on Neipel et al. (2020).
@@ -2037,9 +2033,7 @@ class NeipelHeterogeneousSIR(ContinuousModel):
 
     def __init__(self):
         super().__init__()
-        self.state_variables = OrderedDict(
-            {"I": "Infectious", "tau": "Epidemic progress"}
-        )
+        self.state_variables = OrderedDict({"I": "Infectious", "tau": "Epidemic progress"})
         self.parameters = OrderedDict(
             {
                 "beta": r"$\beta$",
