@@ -1422,7 +1422,6 @@ class SIRSEI(ContinuousModel):
         return float(np.sqrt((a**2 * p["b1"] * p["b2"] * b3) / ((b3 + l + mu) * p["gamma"] * mu)))
 
     def _model(self, t: float, y: list[float], p: dict[str, float]) -> list[float]:
-
         Sh, Ih, Rh, Sv, Ev, Iv = y
 
         N = Sh + Ih + Rh
@@ -2489,7 +2488,6 @@ S --> |$$r(1-N/k)$$| S
         return None
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
-
         S, I = y
 
         beta = params["beta"]
