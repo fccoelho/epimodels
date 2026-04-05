@@ -111,11 +111,11 @@ class BaseModel:
         missing = set(self.parameters.keys()) - set(params.keys())
         if missing:
             raise ValidationError(f"Missing required parameters: {missing}")
-
-        for param, value in params.items():
-            if param in self.parameters:
-                if isinstance(value, (int, float)) and value < 0:
-                    raise ValidationError(f"Parameter '{param}' must be non-negative, got {value}")
+        
+        # for param, value in params.items():
+        # if param in self.parameters:
+        #     if isinstance(value, (int, float)) and value < 0:
+        #         raise ValidationError(f"Parameter '{param}' must be non-negative, got {value}")
 
     def _validate_parameters_rich(self, params: dict[str, Any]) -> None:
         """Rich validation using ParameterSpec."""
