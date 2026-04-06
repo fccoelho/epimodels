@@ -6,4 +6,17 @@ license: GPL V3 or Later
 
 from .models import *
 
-__all__ = ["ContinuousModel", "SIR", "SIR1D", "SIS", "SIRS", "SEIR", "SEQIAHR", "Dengue4Strain", "SIRSEI", "SIR2Strain", "SIRSEIData"]
+__all__ = [
+    "ContinuousModel",
+    "SIR",
+    "SIR1D",
+    "SIS",
+    "SIRS",
+    "SEIR",
+    "SEQIAHR",
+    "Dengue4Strain",
+    "SIRSEI",
+    "SIRSEIData",
+    "SEIRS_SEI",
+    "SIR2Strain",
+]
