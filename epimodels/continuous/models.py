@@ -2014,14 +2014,28 @@ class SIRSNonAutonomous(ContinuousModel):
 
 class NeipelHeterogeneousSIR(ContinuousModel):
     """
-    SIRS model with time-dependent parameters.
+    Heterogeneous SIR model based on Neipel et al. (2020).
 
-    Includes waning immunity: R -> S with rate alpha(t)
+    State Variables:
+        - I: Infectious individuals
+        - tau: epidemic progress variable
+
+    Derived quantities:
+        - S(t) = (N - I0) * (1 + tau/alpha)^(-alpha)
+        - R(t) = N - S(t) - I(t)
+
+    Parameters:
+        - beta: transmission rate
+        - gamma: recovery rate
+        - alpha: susceptibility heterogeneity exponent
+        - I0: initial number of infectious individuals
     """
 
     def __init__(self):
         super().__init__()
-        self.state_variables = OrderedDict({"I": "Infectious", "tau": "Epidemic progress"})
+        self.state_variables = OrderedDict(
+            {"I": "Infectious", "tau": "Epidemic progress"}
+        )
         self.parameters = OrderedDict(
             {
                 "beta": r"$\beta$",
@@ -2062,17 +2076,15 @@ I -->|$$\gamma$$| R(Removed)
         S = self.susceptible(tau, N, I0, alpha)
         return N - S - I
 
-    def _model(self, t: float, y: list[float], params: dict):
-        S, I, R = y
+    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
+        I, tau = y
+        beta = params["beta"]
+        gamma = params["gamma"]
+        alpha = params["alpha"]
+        I0 = params["I0"]
         N = params["N"]
 
-        # parâmetros dependentes do tempo
-        alpha = params["alpha"](t)
-        beta = params["beta"](t)
-        gamma = params["gamma"](t)
-
-        dSdt = -beta * S * I / N + alpha * R/N
-        dIdt = beta * S * I / N - gamma * I/N
-        dRdt = gamma * I/N - alpha * R
+        dI = I * beta * (1 - I0 / N) * (1 + tau / alpha) ** (-(alpha + 1)) - gamma * I
+        dtau = beta * I / N
 
         return [dI, dtau]
