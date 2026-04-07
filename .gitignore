@@ -53,3 +53,5 @@ MANIFEST
 
 .opencode
 .aider*
+
+venv/
