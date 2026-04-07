@@ -2435,25 +2435,27 @@ class SIR2Strain(ContinuousModel):
 
 class SISLogistic(ContinuousModel):
     """
-    SIS model with logistic growth.
+    SIS model with logistic growth (R0 parametrization).
 
     State Variables:
         - S: Susceptible individuals
         - I: Infectious individuals
 
     Parameters:
-        - beta (β): Transmission rate
+        - R0: Basic reproduction number
         - gamma (γ): Recovery rate
         - r: Population growth rate
         - k: Carrying capacity
 
     Equations:
 
+        β = R0 * γ
+
         dS/dt = rS(1 - N/k) - βSI/N + γI
         dI/dt = βSI/N - γI
 
     Basic Reproduction Number:
-        R₀ = β/γ
+        R₀ = β/γ = R0
 
     Note:
         N = S + I
@@ -2462,14 +2464,21 @@ class SISLogistic(ContinuousModel):
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict({"S": "Susceptible", "I": "Infectious"})
-        self.parameters = {"beta": r"\beta", "gamma": r"\gamma", "r": r"r", "k": r"k"}
+        
+        self.parameters = {
+            "R0": r"R_0",
+            "gamma": r"\gamma",
+            "r": r"r",
+            "k": r"k"
+        }
+
         self.model_type = "SIS_logistic"
 
     @property
     def diagram(self) -> str:
         return r"""flowchart LR
          
-S(Susceptible) -->|$$\beta$$| I(Infectious)
+S(Susceptible) -->|$$R_0 \cdot \gamma$$| I(Infectious)
 I -->|$$\gamma$$| S
 S --> |$$r(1-N/k)$$| S
 """
@@ -2477,23 +2486,23 @@ S --> |$$r(1-N/k)$$| S
     @property
     def R0(self) -> float | None:
         """
-        Basic reproduction number for SIS logistc model.
+        Basic reproduction number (direct parameter).
 
-        R0 = β / γ
-
-        :return: Basic reproduction number, or None if parameters not set
+        :return: R0 or None
         """
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
+        if self.param_values and "R0" in self.param_values:
+            return float(self.param_values["R0"])
         return None
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         S, I = y
 
-        beta = params["beta"]
+        R0 = params["R0"]
         gamma = params["gamma"]
         r = params["r"]
         k = params["k"]
+
+        beta = R0 * gamma 
 
         N = S + I
 
