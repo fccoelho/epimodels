@@ -2560,7 +2560,9 @@ class NeipelHeterogeneousSIR(ContinuousModel):
 
     def __init__(self):
         super().__init__()
-        self.state_variables = OrderedDict({"I": "Infectious", "tau": "Epidemic progress"})
+        self.state_variables = OrderedDict(
+            {"I": "Infectious", "tau": "Epidemic progress"}
+        )
         self.parameters = OrderedDict(
             {
                 "beta": r"$\beta$",
