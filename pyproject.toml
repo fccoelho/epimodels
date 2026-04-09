@@ -1,6 +1,6 @@
 [project]
 name = "epimodels"
-version = "1.0.1"
+version = "1.0.2"
 description = "Library of mathematical epidemic models for use in simulation studies and inference."
 authors = [
     {name="Flávio Codeço Coelho",  email = "fccoelho@gmail.com"}
@@ -22,6 +22,7 @@ dependencies = [
     "numpy>=2.2.0",
     "pandas>=3.0.1",
     "scipy>=1.14.1",
+    "scipy-stubs~=1.17.1",
     "sympy>=1.13.3",
 ]
 
@@ -49,8 +50,8 @@ dev = [
 Homepage = "https://github.com/fccoelho/epimodels"
 Documentation = "https://epimodels.readthedocs.io"
 
-[tool.setuptools]
-packages = ["epimodels"]
+[tool.setuptools.packages.find]
+include = ["epimodels*"]
 
 [tool.ruff]
 line-length = 100
