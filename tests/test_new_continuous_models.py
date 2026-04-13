@@ -6,7 +6,7 @@ from epimodels.continuous.models import SISLogistic, SIRSNonAutonomous, NeipelHe
 def test_SISLogistic():
     """Test SIS model with logistic growth."""
     model = SISLogistic()
-    model([900, 100], [0, 100], 1000, {"beta": 0.3, "gamma": 0.1, "r": 0.01, "k": 10000})
+    model([900, 100], [0, 100], 1000, {"R0": 3.0, "gamma": 0.1, "r": 0.01, "k": 10000})
     assert len(model.traces) == 3  # S, I, time
     assert "S" in model.traces
     assert "I" in model.traces
@@ -17,16 +17,15 @@ def test_SISLogistic():
 def test_SISLogistic_R0():
     """Test SISLogistic R0 computation."""
     model = SISLogistic()
-    # Run model to populate param_values
-    model([900, 100], [0, 100], 1000, {"beta": 0.4, "gamma": 0.1, "r": 0.01, "k": 10000})
+    model([900, 100], [0, 100], 1000, {"R0": 4.0, "gamma": 0.1, "r": 0.01, "k": 10000})
     assert model.R0 == 4.0
 
 
 def test_SISLogistic_parameters():
     """Test SISLogistic parameters are set correctly after running model."""
     model = SISLogistic()
-    model([900, 100], [0, 100], 1000, {"beta": 0.4, "gamma": 0.1, "r": 0.01, "k": 10000})
-    assert model.param_values["beta"] == 0.4
+    model([900, 100], [0, 100], 1000, {"R0": 4.0, "gamma": 0.1, "r": 0.01, "k": 10000})
+    assert model.param_values["R0"] == 4.0
     assert model.param_values["gamma"] == 0.1
     assert model.param_values["r"] == 0.01
     assert model.param_values["k"] == 10000
@@ -35,7 +34,7 @@ def test_SISLogistic_parameters():
 def test_SISLogistic_simulation():
     """Test SISLogistic simulation produces reasonable results."""
     model = SISLogistic()
-    model([950, 50], [0, 200], 1000, {"beta": 0.3, "gamma": 0.1, "r": 0.02, "k": 10000})
+    model([950, 50], [0, 200], 1000, {"R0": 3.0, "gamma": 0.1, "r": 0.02, "k": 10000})
     assert len(model.traces["time"]) > 0
     assert len(model.traces["S"]) == len(model.traces["time"])
     assert len(model.traces["I"]) == len(model.traces["time"])

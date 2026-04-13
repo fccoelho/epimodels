@@ -13,12 +13,32 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange.svg)](https://docs.astral.sh/ruff/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
-This library a simple interface to simulate mathematical epidemic models.
+**Epimodels** is a Python library for simulating and fitting mathematical epidemic models. It provides deterministic models in both continuous (ODE-based) and discrete (difference equation) time, along with a comprehensive parameter inference framework, symbolic analysis tools, and multiple ODE solver backends.
 
+## Features
 
-## Getting started
+- **27 model classes** across continuous and discrete families (SIR, SIS, SIRS, SEIR, SEQIAHR, multi-strain, vector-borne, and more)
+- **Model fitting** -- parameter estimation from observed data with 7 loss functions and 4 optimizers
+- **Symbolic analysis** -- R0 computation, equilibrium finding, stability analysis, sensitivity analysis
+- **Multiple solvers** -- scipy (CPU) and diffrax/JAX (GPU) backends with a unified interface
+- **Phase space tools** -- time delay embedding, mutual information, phase portraits
+- **Mermaid diagrams** -- auto-generated compartment flow diagrams for every model
 
-Simple SIR simulation
+## Installation
+
+```bash
+pip install epimodels
+```
+
+For pandas DataFrame support:
+
+```bash
+pip install epimodels[dataframe]
+```
+
+## Getting Started
+
+### Simulation
 
 ```python
 from epimodels.continuous.models import SIR
@@ -26,8 +46,87 @@ from epimodels.continuous.models import SIR
 model = SIR()
 model([1000, 1, 0], [0, 50], 1001, {'beta': 2, 'gamma': .1})
 model.plot_traces()
+print(f"R0 = {model.R0}")
+print(model.summary())
 ```
 
+### Parameter Fitting
+
+```python
+from epimodels.continuous.models import SIR
+from epimodels.fitting import fit_model, Dataset
+
+model = SIR()
+dataset = Dataset()
+dataset.add_series("I", times=[0, 1, 2, 3, 5, 7, 10], values=[1, 3, 8, 20, 50, 80, 60])
+
+result = fit_model(
+    model,
+    dataset,
+    params={"beta": (0.1, 5.0), "gamma": (0.01, 1.0)},
+    initial_conditions=[1000, 1, 0],
+    time_range=[0, 10],
+)
+print(result.best_params)
+print(result.fitted_model.summary())
+```
+
+### Symbolic Analysis
+
+```python
+from epimodels.validation import SymbolicModel
+
+sym = SymbolicModel()
+sym.add_parameter("beta", positive=True, real=True)
+sym.add_parameter("gamma", positive=True, real=True)
+sym.add_variable("S", positive=True)
+sym.add_variable("I", positive=True)
+sym.add_variable("R", positive=True)
+sym.set_total_population("N")
+
+sym.define_ode("S", "-beta*S*I/N")
+sym.define_ode("I", "beta*S*I/N - gamma*I")
+sym.define_ode("R", "gamma*I")
+
+R0 = sym.compute_R0_next_generation()
+print(f"R0 = {R0}")
+```
+
+## Available Models
+
+### Continuous (ODE)
+
+| Model | Compartments | Key Features |
+|-------|-------------|--------------|
+| `SIR` | S, I, R | Classic susceptible-infectious-removed |
+| `SIS` | S, I | No immunity, reinfection |
+| `SIRS` | S, I, R | Waning immunity |
+| `SEIR` | S, E, I, R | Latent period |
+| `SEQIAHR` | S, E, I, A, H, R, C, D | COVID-like with quarantine, hospitalization |
+| `Dengue4Strain` | 49 compartments | 4-strain dengue with cross-immunity |
+| `SIRSEI` | 7 compartments | Malaria vector-host with climate forcing |
+| `SIRSEIData` | 7 compartments | Malaria with real climate data |
+| `SEIRS_SEI` | 7 compartments | Vector-borne with deforestation/fire effects |
+| `SIR2Strain` | 10 compartments | Two-strain SIR with cross-immunity |
+| `SISLogistic` | S, I | SIS with logistic population growth |
+| `SIRSNonAutonomous` | S, I, R | Time-dependent parameters (callables) |
+| `NeipelHeterogeneousSIR` | I, tau | Heterogeneous susceptibility |
+
+### Discrete (Difference Equations)
+
+| Model | Compartments | Key Features |
+|-------|-------------|--------------|
+| `SIR` | S, I, R | Classic discrete SIR |
+| `SIS` | S, I | No immunity |
+| `SIRS` | S, I, R | Waning immunity |
+| `SEIR` | S, E, I, R | Latent period |
+| `SEIS` | S, E, I | Exposed, no immunity |
+| `SIpRpS` | S, I, R | Partial immunity |
+| `SIpR` | S, I, R | Secondary infections from recovered |
+| `SEIpRpS` | S, E, I, R | Exposed + partial immunity |
+| `SEIpR` | S, E, I, R | Exposed + secondary infections from R |
+| `Influenza` | 20 compartments | Age-structured (4 groups) |
+| `SEQIAHR` | S, E, I, A, H, R, C, D | COVID-like discrete version |
 
 ## Solvers
 
@@ -61,33 +160,6 @@ model = SIR()
 model([999, 1, 0], [0, 100], 1000, {'beta': 0.3, 'gamma': 0.1}, solver=solver)
 ```
 
-### Performance Benchmarks
-
-Benchmarks run on SIR model with N=1,000,000, t=[0,365], β=0.4, γ=0.1.
-
-#### Scipy Methods
-
-| Method | Time (ms) | Accuracy* | Stiff Handling | Notes |
-|--------|-----------|-----------|----------------|-------|
-| **LSODA** | 2.4 | Good | Excellent | Auto stiffness detection |
-| **RK23** | 6.5 | Good | Poor | Fastest explicit method |
-| **DOP853** | 4.9 | Excellent | Poor | Highest accuracy |
-| **RK45** | 48.3 | Good | Poor | Default, robust |
-| **Radau** | 23.5 | Excellent | Excellent | Implicit, for stiff systems |
-| **BDF** | 31.5 | Good | Excellent | Implicit multi-step |
-
-*Accuracy measured as deviation from DOP853 reference solution.
-
-#### Diffrax Methods (JAX)
-
-| Method | CPU Time | GPU Time* | Notes |
-|--------|----------|-----------|-------|
-| **Tsit5** | ~2x faster than scipy | 10-50x faster | Recommended default |
-| **Dopri5** | Similar to Tsit5 | 10-50x faster | Classic Dormand-Prince |
-| **Dopri8** | Slower | 5-20x faster | High accuracy |
-
-*GPU speedup observed on batch simulations (100+ concurrent models)
-
 ### When to Use Each Solver
 
 | Scenario | Recommended Solver | Reason |
@@ -109,11 +181,41 @@ pip install diffrax jax
 
 # GPU (CUDA 12)
 pip install diffrax "jax[cuda12]"
-
-# GPU (CUDA 11)
-pip install diffrax "jax[cuda11]"
 ```
 
-### Related libraries
+## Model Fitting
 
-For stochastic epidemic models check [this](https://github.com/fccoelho/EpiStochModels).
+The `epimodels.fitting` module provides parameter estimation from observed epidemiological data.
+
+### Loss Functions
+
+| Loss Function | Best For |
+|---------------|----------|
+| `SumOfSquaredErrors` | General purpose |
+| `WeightedSSE` | Variable importance weighting |
+| `PoissonLikelihood` | Count data |
+| `NegativeBinomialLikelihood` | Overdispersed count data |
+| `NormalLikelihood` | Continuous data with noise |
+| `HuberLoss` | Robust to outliers |
+| `CustomLoss` | User-defined objectives |
+
+### Optimizers
+
+| Optimizer | Methods | Notes |
+|-----------|---------|-------|
+| `ScipyOptimizer` | L-BFGS-B, BFGS, Nelder-Mead, Powell, CG, differential_evolution | CPU, most methods |
+| `JAXOptimizer` | Adam, SGD, RMSprop | GPU-accelerated |
+| `NevergradOptimizer` | Derivative-free | No gradients needed |
+| `MultiStartOptimizer` | Multi-start wrapper | Avoids local minima |
+
+## Related Libraries
+
+For stochastic epidemic models check [EpiStochModels](https://github.com/fccoelho/EpiStochModels).
+
+## Documentation
+
+Full documentation is available at [epimodels.readthedocs.io](https://epimodels.readthedocs.io).
+
+## License
+
+MIT License - see [LICENSE.txt](LICENSE.txt) for details.
