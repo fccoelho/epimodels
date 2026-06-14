@@ -2624,3 +2624,215 @@ I -->|$$\gamma$$| R(Removed)
         dtau = beta * I / N
 
         return [dI, dtau]
+
+
+class EbolaSEIHFRV(ContinuousModel):
+    """
+    SEIHFR-V Model for Ebola Epidemic Dynamics.
+
+    A compartmental model incorporating Ebola-specific transmission pathways
+    (community, hospital, and funeral/burial), clinical outcomes, and vaccination
+    effects using the rVSV-ZEBOV (Ervebo) vaccine deployed via ring vaccination.
+
+    Based on the EpidBot Analysis Report for the Democratic Republic of Congo
+    (Coelho, 2026; doi:10.5281/zenodo.20634292).
+
+    State Variables:
+        - S: Susceptible individuals
+        - E: Exposed / incubating (not yet infectious)
+        - I: Infectious in community (symptomatic, not hospitalized)
+        - H: Hospitalized (reduced infectivity by factor phiH)
+        - R: Recovered and immune
+        - V: Vaccinated
+        - D: Infectious deceased (during burial period)
+        - Cc: Cumulative cases
+        - Cd: Cumulative deaths
+
+    Parameters:
+        - beta (beta): Transmission rate (day^-1)
+        - sigma (sigma): Incubation rate (1 / mean incubation period)
+        - gammaI (gamma_I): Community infectious rate (1 / mean community infectious period)
+        - gammaH (gamma_H): Hospital discharge rate (1 / mean hospital stay)
+        - muD (mu_D): Burial rate (1 / mean burial delay)
+        - theta (theta): Funeral transmission weight
+        - phiH (phi_H): Hospital transmission factor (relative infectivity)
+        - fH (f_H): Hospitalization rate (fraction of infectious who are hospitalized)
+        - CFR: Case fatality rate
+        - rho (rho): Relative community CFR factor
+        - epsilon (epsilon): Vaccine efficacy
+        - nu (nu): Vaccination rate (day^-1)
+
+    Equations:
+
+        Force of infection:  Lambda = beta * (I + phiH * H + theta * D) / N
+        Hospital death rate: muH = gammaH * CFR / (1 - CFR)
+        Effective vaccination: nu_eff = nu * epsilon
+
+        dS/dt  = -Lambda * S - nu_eff * S
+        dE/dt  = Lambda * S - sigma * E
+        dI/dt  = sigma * E - gammaI * I
+        dH/dt  = fH * gammaI * I - (gammaH + muH) * H
+        dR/dt  = (1 - fH) * gammaI * I * (1 - rho * CFR) + gammaH * H * (1 - CFR)
+        dV/dt  = nu_eff * S
+        dD/dt  = fH * muH * H + (1 - fH) * gammaI * I * rho * CFR - muD * D
+        dCc/dt = sigma * E
+        dCd/dt = muD * D
+
+    Basic Reproduction Number:
+
+        R0 = R0_community + R0_hospital + R0_funeral
+
+        R0_community = beta / gammaI
+        R0_hospital  = beta * phiH * fH / gammaH
+        R0_funeral   = beta * theta / muD * (fH * CFR + (1 - fH) * CFR * rho)
+
+    Reference Parameter Values (DRC health zone, N = 500,000):
+
+        =========== =========== ===========
+        Parameter   Symbol      Value
+        =========== =========== ===========
+        sigma       sigma       1/9 day^-1
+        gammaI      gamma_I     1/5 day^-1
+        gammaH      gamma_H     1/7 day^-1
+        muD         mu_D        1/2 day^-1
+        beta        beta        0.40
+        theta       theta       0.50
+        phiH        phi_H       0.10
+        fH          f_H         0.60
+        CFR         CFR         0.50
+        rho         rho         0.70
+        epsilon     epsilon     0.975
+        nu          nu          scenario-dependent
+        =========== =========== ===========
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.state_variables = OrderedDict(
+            {
+                "S": "Susceptible",
+                "E": "Exposed",
+                "I": "Infectious (community)",
+                "H": "Hospitalized",
+                "R": "Recovered",
+                "V": "Vaccinated",
+                "D": "Infectious deceased",
+                "Cc": "Cumulative cases",
+                "Cd": "Cumulative deaths",
+            }
+        )
+        self.parameters = OrderedDict(
+            {
+                "beta": r"$\beta$",
+                "sigma": r"$\sigma$",
+                "gammaI": r"$\gamma_I$",
+                "gammaH": r"$\gamma_H$",
+                "muD": r"$\mu_D$",
+                "theta": r"$\theta$",
+                "phiH": r"$\phi_H$",
+                "fH": r"$f_H$",
+                "CFR": "$CFR$",
+                "rho": r"$\rho$",
+                "epsilon": r"$\epsilon$",
+                "nu": r"$\nu$",
+            }
+        )
+        self.model_type = "SEIHFR-V"
+
+    @property
+    def diagram(self) -> str:
+        """Mermaid diagram of the Ebola SEIHFR-V compartmental model"""
+        return r"""flowchart LR
+
+S(Susceptible) -->|$$\Lambda$$| E(Exposed)
+E -->|$$\sigma$$| I(Infectious)
+I -->|$$f_H$$| H(Hospitalized)
+I -->|$$\gamma_I$$| R(Recovered)
+H -->|$$\gamma_H$$| R
+I -->|$$\rho \cdot CFR$$| D(Deceased)
+H -->|$$\mu_H$$| D
+D -->|$$\mu_D$$| B(Burial)
+S -->|$$\nu \cdot \epsilon$$| V(Vaccinated)
+"""
+
+    @property
+    def R0(self) -> float | None:
+        """
+        Basic reproduction number for the Ebola SEIHFR-V model.
+
+        Decomposed into community, hospital, and funeral contributions
+        using the next-generation matrix approach.
+
+        R0 = R0_community + R0_hospital + R0_funeral
+
+        :return: Basic reproduction number, or None if parameters not set
+        """
+        required = ("beta", "gammaI", "gammaH", "muD", "theta", "phiH", "fH", "CFR", "rho")
+        if self.param_values and all(k in self.param_values for k in required):
+            p = self.param_values
+            r0_community = p["beta"] / p["gammaI"]
+            r0_hospital = p["beta"] * p["phiH"] * p["fH"] / p["gammaH"]
+            r0_funeral = (
+                p["beta"] * p["theta"] / p["muD"]
+                * (p["fH"] * p["CFR"] + (1 - p["fH"]) * p["CFR"] * p["rho"])
+            )
+            return float(r0_community + r0_hospital + r0_funeral)
+        return None
+
+    @property
+    def R0_components(self) -> dict[str, float] | None:
+        """
+        Decomposition of R0 into community, hospital, and funeral contributions.
+
+        :return: Dict with keys 'community', 'hospital', 'funeral', 'total',
+                 or None if parameters not set.
+        """
+        required = ("beta", "gammaI", "gammaH", "muD", "theta", "phiH", "fH", "CFR", "rho")
+        if self.param_values and all(k in self.param_values for k in required):
+            p = self.param_values
+            r0_community = p["beta"] / p["gammaI"]
+            r0_hospital = p["beta"] * p["phiH"] * p["fH"] / p["gammaH"]
+            r0_funeral = (
+                p["beta"] * p["theta"] / p["muD"]
+                * (p["fH"] * p["CFR"] + (1 - p["fH"]) * p["CFR"] * p["rho"])
+            )
+            return {
+                "community": r0_community,
+                "hospital": r0_hospital,
+                "funeral": r0_funeral,
+                "total": r0_community + r0_hospital + r0_funeral,
+            }
+        return None
+
+    def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
+        S, E, I, H, R, V, D, Cc, Cd = y
+
+        beta = params["beta"]
+        sigma = params["sigma"]
+        gammaI = params["gammaI"]
+        gammaH = params["gammaH"]
+        muD = params["muD"]
+        theta = params["theta"]
+        phiH = params["phiH"]
+        fH = params["fH"]
+        CFR = params["CFR"]
+        rho = params["rho"]
+        epsilon = params["epsilon"]
+        nu = params["nu"]
+        N = params["N"]
+
+        muH = gammaH * CFR / (1 - CFR)
+        nu_eff = nu * epsilon
+        Lambda = beta * (I + phiH * H + theta * D) / N
+
+        dS = -Lambda * S - nu_eff * S
+        dE = Lambda * S - sigma * E
+        dI = sigma * E - gammaI * I
+        dH = fH * gammaI * I - (gammaH + muH) * H
+        dR = (1 - fH) * gammaI * I * (1 - rho * CFR) + gammaH * H * (1 - CFR)
+        dV = nu_eff * S
+        dD = fH * muH * H + (1 - fH) * gammaI * I * rho * CFR - muD * D
+        dCc = sigma * E
+        dCd = muD * D
+
+        return [dS, dE, dI, dH, dR, dV, dD, dCc, dCd]
