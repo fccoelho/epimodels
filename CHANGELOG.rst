@@ -3,6 +3,19 @@
 Changelog
 =========
 
+Version 1.3.0 (2026-06-14)
+==========================
+
+Added
+-----
+
+* **EbolaSEIHFRV** model -- SEIHFR-V compartmental model for Ebola epidemic dynamics
+  with community, hospital, and funeral transmission pathways, ring vaccination
+  (rVSV-ZEBOV / Ervebo), and next-generation matrix R0 decomposition
+* Example notebook ``Ebola_SEIHFRV_Example.ipynb`` with scenario analysis, R0
+  decomposition, and vaccination timing analysis based on the DRC technical report
+  (doi:10.5281/zenodo.20634292)
+
 Version 1.2.0 (2026-05-13)
 ==========================
 
