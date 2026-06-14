@@ -19,5 +19,4 @@ __all__ = [
     "SIRSEIData",
     "SEIRS_SEI",
     "SIR2Strain",
-    "EbolaSEIHFRV",
 ]

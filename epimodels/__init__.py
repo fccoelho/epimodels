@@ -111,7 +111,7 @@ class BaseModel:
         missing = set(self.parameters.keys()) - set(params.keys())
         if missing:
             raise ValidationError(f"Missing required parameters: {missing}")
-
+        
         for param, value in params.items():
             if param in self.parameters:
                 if isinstance(value, (int, float)) and value < 0:

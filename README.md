@@ -13,6 +13,16 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange.svg)](https://docs.astral.sh/ruff/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
+<p align="center">
+  <strong>Sponsored by</strong><br>
+  <a href="https://kwar-ai.com.br" target="_blank">
+    <img src="docs/images/kwar-ai-logo.jpg" alt="Kwar-AI" width="200">
+  </a><br>
+  <em>AI-powered epidemiological intelligence</em>
+</p>
+
+---
+
 **Epimodels** is a Python library for simulating and fitting mathematical epidemic models. It provides deterministic models in both continuous (ODE-based) and discrete (difference equation) time, along with a comprehensive parameter inference framework, symbolic analysis tools, and multiple ODE solver backends.
 
 ## Features
@@ -108,6 +118,7 @@ print(f"R0 = {R0}")
 | `SIRSEIData` | 7 compartments | Malaria with real climate data |
 | `SEIRS_SEI` | 7 compartments | Vector-borne with deforestation/fire effects |
 | `SIR2Strain` | 10 compartments | Two-strain SIR with cross-immunity |
+| `SIR1D` | S, I | 1D reduced SIR (beta/gamma tracking) |
 | `SISLogistic` | S, I | SIS with logistic population growth |
 | `SIRSNonAutonomous` | S, I, R | Time-dependent parameters (callables) |
 | `NeipelHeterogeneousSIR` | I, tau | Heterogeneous susceptibility |

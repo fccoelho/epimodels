@@ -67,12 +67,16 @@ Contents
    solvers
    validation_system
    fitting
+   stochastic
+   phase_space
+   exporters
 
 .. toctree::
    :maxdepth: 2
    :caption: Examples:
 
    Examples/Continuous_models
+   Examples/Stochastic_CTMC_models
    Examples/Discrete_models
    Examples/API_features
    Examples/Phase_space_analysis
@@ -84,6 +88,10 @@ Contents
    Examples/neipel_heterogeneous_sir_example
    Examples/Validation_Framework
    Examples/Advanced_Analytics
+   Examples/Model_Fitting_SIRSEI
+   Examples/Model_Fitting_SIRSEI_Prevalence
+   Examples/SEIRS_SEI_Model_Environment
+   Examples/Model_Fitting_SEIRS_SEI
 
 .. toctree::
    :maxdepth: 2
@@ -110,6 +118,9 @@ ODE Solvers (Unified interface)
   - :class:`~epimodels.solvers.ScipySolver` - Scipy-based solver (CPU)
   - :class:`~epimodels.solvers.DiffraxSolver` - JAX-accelerated solver (GPU)
 
+CTMC Solvers (Stochastic simulation)
+  - :class:`~epimodels.stochastic.CTMC.solvers.GillespieSolver` - Gillespie Direct Method (SSA)
+
 Model Classes
 -------------
 
@@ -124,6 +135,7 @@ Continuous Models (ODE-based)
   - :class:`~epimodels.continuous.models.SIRSEIData` - Malaria with real climate data
   - :class:`~epimodels.continuous.models.SEIRS_SEI` - Vector-borne with environmental effects
   - :class:`~epimodels.continuous.models.SIR2Strain` - Two-strain SIR with cross-immunity
+  - :class:`~epimodels.continuous.models.SIR1D` - 1D reduced SIR (beta/gamma tracking)
   - :class:`~epimodels.continuous.models.SISLogistic` - SIS with logistic population growth
   - :class:`~epimodels.continuous.models.SIRSNonAutonomous` - SIRS with time-dependent parameters
   - :class:`~epimodels.continuous.models.NeipelHeterogeneousSIR` - Heterogeneous susceptibility
@@ -140,6 +152,12 @@ Discrete Models (Difference equations)
   - :class:`~epimodels.discrete.models.SEIpRpS` - Exposed + partial immunity
   - :class:`~epimodels.discrete.models.SIpR` - Secondary infections from recovered
   - :class:`~epimodels.discrete.models.SEIpR` - Exposed + secondary infections from R
+
+Stochastic Models (CTMC / Gillespie SSA)
+  - :class:`~epimodels.stochastic.CTMC.models.SIR` - Stochastic SIR
+  - :class:`~epimodels.stochastic.CTMC.models.SIS` - Stochastic SIS
+  - :class:`~epimodels.stochastic.CTMC.models.SIRS` - Stochastic SIRS (waning immunity)
+  - :class:`~epimodels.stochastic.CTMC.models.SEIR` - Stochastic SEIR (with latent period)
 
 Fitting Module
 --------------
@@ -167,6 +185,19 @@ Method                               Description
 ``reset()``                           Clear simulation results
 ``R0``                                Basic reproduction number (property)
 ``diagram``                           Mermaid compartment diagram (property)
+====================================  =====================================================
+
+Stochastic models (CTMC) also provide:
+
+====================================  =====================================================
+Method                               Description
+====================================  =====================================================
+``get_mean()``                        Mean trajectory across replicates
+``get_variance()``                    Variance across replicates
+``get_quantiles(q)``                  Quantile trajectories
+``get_replicate(i)``                  Single replicate as dict
+``get_event_times(event)``            Event occurrence times
+``to_dataframe(replicate=i)``        DataFrame of specific replicate
 ====================================  =====================================================
 
 

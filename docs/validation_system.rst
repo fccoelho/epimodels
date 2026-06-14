@@ -356,32 +356,19 @@ Integration Tests
        with pytest.raises(ValidationError):
            model([100, 10], [0, 50], 110, {'alpha': -0.5})
 
-Future Enhancements
--------------------
+Available Symbolic Analysis
+--------------------------
 
-Planned Features
-~~~~~~~~~~~~~~~~
+The :class:`~epimodels.validation.SymbolicModel` class provides a
+comprehensive symbolic analysis framework. The following features are
+fully implemented:
 
-#. **Enhanced Symbolic Analysis**
-
-   * Automatic equilibrium finding
-   * Stability analysis (eigenvalue computation)
-   * Sensitivity analysis
-
-#. **Parameter Inference**
-
-   * Bayesian parameter estimation
-   * MCMC sampling with constraint priors
-
-#. **Visualization**
-
-   * Automatic parameter space exploration
-   * Constraint visualization
-
-#. **Performance**
-
-   * Cached constraint evaluation
-   * JIT compilation for validators
+* **R0 computation** via :meth:`~epimodels.validation.SymbolicModel.compute_R0_next_generation`
+* **Disease-free equilibrium finding** via :meth:`~epimodels.validation.SymbolicModel.find_disease_free_equilibrium`
+* **Stability analysis** via :meth:`~epimodels.validation.SymbolicModel.check_stability_at_dfe`
+* **Sensitivity analysis** via :meth:`~epimodels.validation.SymbolicModel.sensitivity_analysis`
+* **Elasticity analysis** via :meth:`~epimodels.validation.SymbolicModel.elasticity_analysis`
+* **Parameter importance ranking** via :meth:`~epimodels.validation.SymbolicModel.parameter_importance_ranking`
 
 Examples
 --------

@@ -1787,7 +1787,7 @@ class SEIRS_SEI(ContinuousModel):
         S_H : Susceptible Humans
         E_H : Exposed Humans (incubating, not yet infectious)
         I_H : Infectious Humans
-        R_H : Recovered Humans (immune)
+        R_H : Recovered Humans (waning immunity)
 
     Mosquito Compartments (SEI):
         S_M : Susceptible Mosquitoes
@@ -1800,8 +1800,8 @@ class SEIRS_SEI(ContinuousModel):
         - Forest Fires (INPE data): smoke reduces biting rate
 
     Delay Parameters:
-        - tau_H: Human incubation period (exposed -> infectious)
-        - tau_M: Sporogonic cycle duration (mosquito exposed -> infectious)
+        - tau_H: Human incubation period (exposed -> infectious): b3_H
+        - tau_M: Sporogonic cycle duration (mosquito exposed -> infectious): b3_M
 
     Reference:
         Inspired by Parham & Michael (2010) and Amazon malaria studies.
@@ -1856,7 +1856,7 @@ class SEIRS_SEI(ContinuousModel):
                 "b1": r"$b_1$",
                 "b2": r"$b_2$",
                 "gamma": r"$\gamma$",
-                "r_H": r"$r_H$",
+                #"r_H": r"$r_H$",
                 "omega": r"$\omega$",
                 "tau_H": r"$\tau_H$",
                 "BE": r"$B_E$",

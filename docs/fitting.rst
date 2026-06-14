@@ -68,6 +68,8 @@ Choose an appropriate loss function for your data type:
      - Robust to outliers
    * - :class:`~epimodels.fitting.CustomLoss`
      - User-defined objectives
+   * - :class:`~epimodels.fitting.LogLikelihood`
+     - Generic log-likelihood (user-supplied function)
 
 Optimizers
 ----------
@@ -111,6 +113,29 @@ Multi-start optimization:
         n_starts=10,
     ))
     result = fitter.fit()
+
+Fitting Initial Conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also fit initial conditions alongside parameters using
+:class:`~epimodels.fitting.InitialConditionSpec`:
+
+.. code-block:: python
+
+    from epimodels.fitting import ModelFitter, InitialConditionSpec
+
+    fitter = ModelFitter(
+        model=SIR(),
+        dataset=dataset,
+        params={"beta": (0.1, 5.0), "gamma": (0.01, 1.0)},
+        initial_conditions=[
+            InitialConditionSpec("S", bounds=(500, 1000)),
+            InitialConditionSpec("I", bounds=(1, 100)),
+        ],
+        total_population=1000,
+    )
+    result = fitter.fit()
+    print(result.best_initial_conditions)
 
 Profile likelihood for confidence intervals:
 

@@ -1,7 +1,12 @@
 Solvers
 =======
 
-Epimodels provides a unified interface for ODE solvers, supporting both **scipy** (CPU-only) and **diffrax** (JAX-accelerated with GPU support) backends.
+Epimodels provides solver abstractions for both deterministic ODE models and stochastic CTMC models.
+
+ODE Solvers
+-----------
+
+ODE solvers support both **scipy** (CPU-only) and **diffrax** (JAX-accelerated with GPU support) backends.
 
 Available Solvers
 -----------------
@@ -144,8 +149,54 @@ When to Use Each Solver
 +----------------------+--------------------------------+----------------------------------------+
 
 
-Solver API Reference
---------------------
+CTMC Solvers (Stochastic)
+-------------------------
+
+Stochastic solvers generate exact or approximate trajectories of Continuous-Time
+Markov Chain models using the Gillespie algorithm and related methods.
+
+GillespieSolver
+~~~~~~~~~~~~~~~
+
+Exact stochastic simulation using the Gillespie Direct Method (SSA). Each step:
+
+1. Compute propensities for all events
+2. Draw time to next event from an exponential distribution
+3. Select which event fires (weighted random selection)
+4. Update the state
+
+**Example:**
+
+.. code-block:: python
+
+    from epimodels.stochastic.CTMC import SIR, GillespieSolver
+
+    # Create solver (optional — default when calling a CTMC model)
+    solver = GillespieSolver()
+
+    model = SIR()
+    model([990, 10, 0], [0, 100], 1000,
+          {'beta': 0.3, 'gamma': 0.1},
+          reps=100, seed=42, solver=solver)
+
+When to Use CTMC Solvers
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
++----------------------------------+--------------------------------------------+
+| Scenario                         | Notes                                      |
++==================================+============================================+
+| Small populations (<10,000)      | Stochastic effects are significant         |
++----------------------------------+--------------------------------------------+
+| Extinction risk analysis         | Only stochastic models can capture this    |
++----------------------------------+--------------------------------------------+
+| Confidence intervals             | Run multiple replicates                    |
++----------------------------------+--------------------------------------------+
+| Large populations (>100,000)     | ODE models may be sufficient; CTMC is slow |
++----------------------------------+--------------------------------------------+
+
+
+ODE Solver API Reference
+------------------------
 
 .. autoclass:: epimodels.solvers.SolverBase
    :members:
@@ -164,3 +215,15 @@ Solver API Reference
    :undoc-members:
 
 .. autofunction:: epimodels.solvers.get_default_solver
+
+CTMC Solver API Reference
+-------------------------
+
+.. autoclass:: epimodels.stochastic.CTMC.solvers.CTMCSolverBase
+   :members:
+
+.. autoclass:: epimodels.stochastic.CTMC.solvers.GillespieSolver
+   :members:
+
+.. autoclass:: epimodels.stochastic.CTMC.solvers.CTMCTrajectory
+   :members:

@@ -3,6 +3,26 @@
 Changelog
 =========
 
+Version 1.2.0 (2026-05-13)
+==========================
+
+Added
+-----
+
+* **Documentation update** -- new user guide pages for previously undocumented features:
+  - Phase space analysis tools (TimeDelayEmbedding, mutual_information, Cao's method)
+  - Stochastic CTMC models (Gillespie SSA, replicate methods, quantile bands)
+  - VFGen XML exporter for external tool interoperability
+* **SIR1D** model added to documentation and export list
+* **LogLikelihood** loss function documented in fitting guide
+* **InitialConditionSpec** usage section added to fitting docs
+* Updated validation system docs to reflect implemented symbolic analysis features
+
+Fixed
+-----
+
+* Added ``SISLogistic``, ``SIRSNonAutonomous``, ``NeipelHeterogeneousSIR`` to ``continuous/__init__.py`` ``__all__``
+
 Version 1.1.0 (2026-04-11)
 ==========================
 
