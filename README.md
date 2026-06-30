@@ -12,6 +12,7 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/fccoelho/epimodels.svg)](https://github.com/fccoelho/epimodels/commits/master)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange.svg)](https://docs.astral.sh/ruff/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![EpidBot Ready](https://img.shields.io/badge/EpidBot-Ready-brightgreen?style=flat-square&logo=robot&logoColor=white)](https://epidbot.kwar-ai.com.br)
 
 <p align="center">
   <strong>Sponsored by</strong><br>
