@@ -1804,7 +1804,8 @@ class SEIRS_SEI(ContinuousModel):
         - tau_M: Sporogonic cycle duration (mosquito exposed -> infectious): b3_M
 
     Reference:
-        Inspired by Parham & Michael (2010) and Amazon malaria studies.
+        Based in Parham & Michael (2010) and Amazon malaria studies, with further modifications
+        inspired by Mordecai et al (2013) and Eikenberry and Gumel (2017).
 
     Example:
         >>> model = SEIRS_SEI()
@@ -1872,7 +1873,6 @@ class SEIRS_SEI(ContinuousModel):
                 "B": r"$B$",
                 "C": r"$C$",
                 "DD": r"$DD$",
-                "Tmin": r"$T_{min}$",
                 "T_prime": r"$T'$",
                 "R_L": r"$R_L$",
                 "defor_max_effect": r"$defor_{max}$",
@@ -1881,6 +1881,12 @@ class SEIRS_SEI(ContinuousModel):
                 "fire_smoke_effect": r"$fire_{smoke}$",
                 "fire_habitat_effect": r"$fire_{habitat}$",
                 "fire_recovery_delay": r"$fire_{delay}$",
+                "optimal_temp_plasm": r"$T_{opt_plasm}$",
+                "Tmin": r"$T_{min}$", #critical_min_temp_plasm
+                "critical_max_temp_plasm": r"$T_{max_plasm}$",
+                "optimal_temp_anop": r"$T_{opt_anop}$",
+                "critical_min_temp_anop": r"$T_{min_anop}$",
+                "critical_max_temp_anop": r"$T_{max_anop}$",
             }
         )
         self.model_type = "SEIRS-SEI"
@@ -1959,12 +1965,12 @@ class SEIRS_SEI(ContinuousModel):
 
     def _p_T(self, T: float, U: float) -> float:
         """Daily mosquito survival probability (temperature and humidity dependent)."""
-        A = self.param_values.get("A", 12.5)
-        B = self.param_values.get("B", 15.0)
-        C = self.param_values.get("C", -48.78)
+        A = self.param_values.get("A", -0.03)
+        B = self.param_values.get("B", 1.31)
+        C = self.param_values.get("C", -4.4)
         denom = A * T**2 + B * T + C
-        if denom >= 0:
-            p_T_temp = 0.85
+        if denom <= 0:
+            p_T_temp = 0.0
         else:
             p_T_temp = np.exp(-1.0 / denom)
         if U < 50:
@@ -1980,8 +1986,6 @@ class SEIRS_SEI(ContinuousModel):
         c1 = self.param_values.get("c1", 0.00554)
         c2 = self.param_values.get("c2", -0.06737)
         exponent = c1 * T + c2
-        if exponent > 10:
-            return 0.0
         return np.exp(-exponent)
 
     def _p_LR(self, R: float, R_L: float, p_ML: float) -> float:
@@ -2007,23 +2011,21 @@ class SEIRS_SEI(ContinuousModel):
         DD = self.param_values.get("DD", 105.0)
         Tmin = self.param_values.get("Tmin", 14.5)
         if T <= Tmin:
-            return 50.0
+            return 1000.0
         return DD / (T - Tmin)
 
     def _mu(self, T: float, U: float) -> float:
         """Mosquito mortality rate."""
         p_T_val = self._p_T(T, U)
         if p_T_val <= 0:
-            return 0.15
-        mu_val = -np.log(p_T_val)
-        return min(mu_val, 0.3)
+            return 1.0
+        return -np.log(p_T_val)
 
     def _a(self, T: float) -> float:
         """Mosquito biting rate (base function)."""
-        T_prime = self.param_values.get("T_prime", 25.6)
-        D1 = self.param_values.get("D1", 4.0)
-        a_val = np.maximum(0, (T - T_prime) / D1)
-        return np.minimum(a_val, 0.8)
+        T_prime = self.param_values.get("T_prime", 19.9)
+        D1 = self.param_values.get("D1", 36.5)
+        return np.maximum(0, (T - T_prime) / D1)
 
     def _a_with_fire(self, T: float, fire_counts: float) -> float:
         """Mosquito biting rate with fire/smoke effect."""
@@ -2149,7 +2151,7 @@ class SEIRS_SEI(ContinuousModel):
         b1 = params["b1"]
         b2 = params["b2"]
         gamma = params["gamma"]
-        r_H = params["r_H"]
+        #r_H = params["r_H"]
         omega = params["omega"]
         tau_H = params["tau_H"]
         R_L = params["R_L"]
@@ -2180,16 +2182,16 @@ class SEIRS_SEI(ContinuousModel):
         mu_curr = self._mu_with_fire(T, U, fire_counts)
         tau_M_curr = self._tau_M(T)
 
-        temp_factor = max(0.1, min(1, (T - 15) / 15))
-        rain_factor = min(1, max(0, R / R_L))
-        day_of_year = int(t % 365.25)
-        seasonal_phase = 2 * np.pi * (day_of_year - 180) / 365.25
-        seasonal_factor = 2.5 + 2.0 * np.sin(seasonal_phase)
+        temp_factor = max(0, (T - critical_min_temp_anop)/(optimal_temp_anop - critical_min_temp_anop))
+
+        habitat_creating_factor = 2*R/R_L
+        habitat_flushing_factor = np.exp(1 - (2*R/R_L))
+        rain_factor = habitat_creating_factor * habitat_flushing_factor
 
         defor_cap_factor = 1 + min(total_defor * defor_scale, defor_max_effect)
         fire_cap_factor = 1 - (fire_habitat_effect * min(delayed_fire / 50.0, 1.0))
         env_cap_factor = defor_cap_factor * max(fire_cap_factor, 0.3)
-        K = M * temp_factor * rain_factor * seasonal_factor * env_cap_factor
+        K = M * temp_factor * rain_factor * env_cap_factor
 
         b_curr = self._b_rate_with_environment(
             R, T, R_L, p_ME, p_ML, p_MP, delayed_fire, delayed_defor
@@ -2230,7 +2232,7 @@ class SEIRS_SEI(ContinuousModel):
         recoveries = gamma * I_H
         immunity_loss = omega * R_H
 
-        dS_H = r_H * N - new_exposures_h + immunity_loss
+        dS_H = - new_exposures_h + immunity_loss
         dE_H = new_exposures_h - new_infections_h
         dI_H = new_infections_h - recoveries
         dR_H = recoveries - immunity_loss
