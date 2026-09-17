@@ -19,4 +19,8 @@ __all__ = [
     "SIRSEIData",
     "SEIRS_SEI",
     "SIR2Strain",
+    "SISLogistic",
+    "SIRSNonAutonomous",
+    "NeipelHeterogeneousSIR",
+    "EbolaSEIHFRV",
 ]

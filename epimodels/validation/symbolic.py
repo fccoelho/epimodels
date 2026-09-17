@@ -8,32 +8,37 @@ Provides symbolic computation for:
 - Stability analysis
 """
 
-from typing import Any
+from __future__ import annotations
+
+import logging
 from collections import OrderedDict
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
+    import numpy as np
     from sympy import (
-        Symbol,
-        symbols,
-        simplify,
-        solve,
-        diff,
-        Matrix,
-        sympify,
-        latex,
+        Abs,
+        Derivative,
         Eq,
         Function,
-        Derivative,
-        sqrt,
-        Abs,
-        re,
-        im,
         I,
+        Matrix,
         S,
+        Symbol,
+        diff,
+        im,
+        latex,
         nsolve,
+        re,
+        simplify,
+        solve,
+        sqrt,
+        symbols,
+        sympify,
     )
     from sympy.core.assumptions import check_assumptions
-    import numpy as np
 
     SYMPY_AVAILABLE = True
 except ImportError:
@@ -77,6 +82,15 @@ class SymbolicModel:
         self.odes: dict[Symbol, Any] = OrderedDict()
         self.difference_equations: dict[Symbol, Any] = OrderedDict()
         self._is_discrete = False
+        # Caches for expensive param-independent symbolic derivations;
+        # invalidated whenever the model definition changes.
+        self._symbolic_jacobian_cache: Any | None = None
+        self._r0_cache: Any | None = None
+
+    def _invalidate_caches(self) -> None:
+        """Clear cached symbolic results after a model definition change."""
+        self._symbolic_jacobian_cache = None
+        self._r0_cache = None
 
     def add_parameter(
         self,
@@ -101,6 +115,7 @@ class SymbolicModel:
         """
         assumption_dict = {"real": real, "positive": positive, "negative": negative, **assumptions}
         self.parameters[name] = symbols(name, **assumption_dict)
+        self._invalidate_caches()
         return self.parameters[name]
 
     def add_variable(
@@ -126,6 +141,7 @@ class SymbolicModel:
         """
         assumption_dict = {"real": real, "positive": positive, "negative": negative, **assumptions}
         self.variables[name] = symbols(name, **assumption_dict)
+        self._invalidate_caches()
         return self.variables[name]
 
     def set_total_population(self, name: str = "N") -> Symbol:
@@ -158,6 +174,7 @@ class SymbolicModel:
         context = self._get_context()
         expr = sympify(rhs, locals=context)
         self.odes[self.variables[variable]] = expr
+        self._invalidate_caches()
 
     def define_difference_equation(self, variable: str, rhs: str) -> None:
         """
@@ -177,6 +194,7 @@ class SymbolicModel:
         expr = sympify(rhs, locals=context)
         self.difference_equations[self.variables[variable]] = expr
         self._is_discrete = True
+        self._invalidate_caches()
 
     def compute_R0_next_generation(self) -> Any:
         """
@@ -199,6 +217,9 @@ class SymbolicModel:
         Note:
             For single infected compartment: R0 = (∂F/∂I)|DFE / (∂V/∂I)|DFE
         """
+        if self._r0_cache is not None:
+            return self._r0_cache
+
         infected_vars = self._identify_infected_compartments()
 
         if not infected_vars:
@@ -242,10 +263,13 @@ class SymbolicModel:
             else:
                 R0 = simplify(dF_at_dfe)
 
+            self._r0_cache = R0
             return R0
 
         else:
-            return self._compute_R0_multivariate(infected_vars, dfe)
+            R0 = self._compute_R0_multivariate(infected_vars, dfe)
+            self._r0_cache = R0
+            return R0
 
     def _identify_infected_compartments(self) -> list:
         """
@@ -420,6 +444,7 @@ class SymbolicModel:
             else:
                 return None
         except Exception:
+            logger.debug("Spectral radius computation failed", exc_info=True)
             return None
 
     def find_disease_free_equilibrium(self) -> dict[str, Any]:
@@ -536,7 +561,10 @@ class SymbolicModel:
                 if R0_val <= 1:
                     return None  # No endemic equilibrium when R0 <= 1
             except Exception:
-                pass
+                logger.debug(
+                    "Could not evaluate R0 to pre-filter endemic equilibria",
+                    exc_info=True,
+                )
 
         # Find all equilibria and filter for endemic
         equilibria = self.find_all_equilibria(params, numeric_fallback)
@@ -594,7 +622,7 @@ class SymbolicModel:
 
         except Exception as e:
             # Symbolic solving failed, will fall back to numeric
-            pass
+            logger.debug("Symbolic equilibrium solving failed: %s", e)
 
         # Only try analytical method if no endemic equilibrium found yet
         has_endemic = any(self._classify_equilibrium(eq) == "endemic" for eq in equilibria)
@@ -604,10 +632,6 @@ class SymbolicModel:
             endemic_eq = self._find_endemic_equilibrium_analytical()
             if endemic_eq and not self._is_equilibrium_duplicate(endemic_eq, equilibria):
                 equilibria.append(endemic_eq)
-
-        return equilibria
-        if endemic_eq and not self._is_equilibrium_duplicate(endemic_eq, equilibria):
-            equilibria.append(endemic_eq)
 
         return equilibria
 
@@ -698,8 +722,12 @@ class SymbolicModel:
                         if I_numeric > 0 and self._validate_equilibrium(eq):
                             eq["method"] = "symbolic"
                             return eq
-                    except:
+                    except Exception:
                         # Symbolic value, check if it could be positive
+                        logger.debug(
+                            "Could not evaluate infected compartment at equilibrium",
+                            exc_info=True,
+                        )
                         pass
 
                 # Also check for symbolic solutions
@@ -710,6 +738,7 @@ class SymbolicModel:
             return None
 
         except Exception:
+            logger.debug("Analytical endemic equilibrium search failed", exc_info=True)
             return None
 
     def _find_equilibria_numeric(
@@ -780,13 +809,14 @@ class SymbolicModel:
                                 if len(equilibria) >= max_solutions:
                                     break
                 except Exception:
+                    logger.debug("Equilibrium candidate validation failed", exc_info=True)
                     continue
 
         except ImportError:
             # scipy not available
-            pass
+            logger.debug("scipy not available; numeric equilibrium fallback skipped")
         except Exception:
-            pass
+            logger.debug("Numeric equilibrium solving failed", exc_info=True)
 
         return equilibria
 
@@ -845,18 +875,14 @@ class SymbolicModel:
                 for i, var_name in enumerate(self.variables.keys()):
                     if var_name.startswith("S") or "Susceptible" in var_name:
                         endemic_guess[i] = N * 0.8
-                    elif var_name.startswith("I") or "Infectious" in var_name:
-                        endemic_guess[i] = N * 0.1
-                    elif var_name.startswith("R") or "Removed" in var_name:
+                    elif var_name.startswith("I") or "Infectious" in var_name or var_name.startswith("R") or "Removed" in var_name:
                         endemic_guess[i] = N * 0.1
         except Exception:
             # Fall back to generic endemic guess
             for i, var_name in enumerate(self.variables.keys()):
                 if var_name.startswith("S") or "Susceptible" in var_name:
                     endemic_guess[i] = N * 0.8
-                elif var_name.startswith("I") or "Infectious" in var_name:
-                    endemic_guess[i] = N * 0.1
-                elif var_name.startswith("R") or "Removed" in var_name:
+                elif var_name.startswith("I") or "Infectious" in var_name or var_name.startswith("R") or "Removed" in var_name:
                     endemic_guess[i] = N * 0.1
 
         guesses.append(endemic_guess)
@@ -1091,38 +1117,42 @@ class SymbolicModel:
         if not self.odes:
             raise ValueError("No ODEs defined for this model")
 
-        # Build Jacobian matrix
-        n_vars = len(self.variables)
-        var_names = list(self.variables.keys())
-        var_syms = list(self.variables.values())
+        # Build (or reuse cached) symbolic Jacobian matrix — the param-free
+        # differentiation+simplification is expensive and model-defined only.
+        if self._symbolic_jacobian_cache is None:
+            n_vars = len(self.variables)
+            var_names = list(self.variables.keys())
+            var_syms = list(self.variables.values())
 
-        jacobian_entries = []
+            jacobian_entries = []
 
-        for i, var_name_i in enumerate(var_names):
-            var_sym_i = self.variables[var_name_i]
-            ode_i = self.odes.get(var_sym_i)
+            for i, var_name_i in enumerate(var_names):
+                var_sym_i = self.variables[var_name_i]
+                ode_i = self.odes.get(var_sym_i)
 
-            if ode_i is None:
-                # No ODE for this variable - all zeros
-                jacobian_entries.append([0] * n_vars)
-                continue
+                if ode_i is None:
+                    # No ODE for this variable - all zeros
+                    jacobian_entries.append([0] * n_vars)
+                    continue
 
-            row = []
-            for j, var_name_j in enumerate(var_names):
-                var_sym_j = self.variables[var_name_j]
+                row = []
+                for j, var_name_j in enumerate(var_names):
+                    var_sym_j = self.variables[var_name_j]
 
-                # Compute partial derivative ∂f_i/∂x_j
-                try:
-                    partial = diff(ode_i, var_sym_j)
-                    partial = simplify(partial)
-                except Exception:
-                    partial = 0
+                    # Compute partial derivative ∂f_i/∂x_j
+                    try:
+                        partial = diff(ode_i, var_sym_j)
+                        partial = simplify(partial)
+                    except Exception:
+                        partial = 0
 
-                row.append(partial)
+                    row.append(partial)
 
-            jacobian_entries.append(row)
+                jacobian_entries.append(row)
 
-        J = Matrix(jacobian_entries)
+            self._symbolic_jacobian_cache = Matrix(jacobian_entries)
+
+        J = self._symbolic_jacobian_cache
 
         # Substitute equilibrium values if requested
         if substitute_values and equilibrium:
@@ -1181,7 +1211,7 @@ class SymbolicModel:
                     eigenvalues = [complex(ev) for ev in eigenvalues_np]
                 except Exception:
                     # Fall back to symbolic
-                    pass
+                    logger.debug("Numeric eigenvalue computation failed", exc_info=True)
 
             if not eigenvalues:
                 # Try symbolic eigenvalue computation
@@ -1202,7 +1232,7 @@ class SymbolicModel:
 
         except Exception as e:
             # Last resort: return empty list
-            pass
+            logger.debug("Eigenvalue computation failed: %s", e)
 
         return eigenvalues
 
@@ -1295,7 +1325,7 @@ class SymbolicModel:
                             imag_parts.append(ev_complex.imag)
                         except Exception:
                             # Symbolic eigenvalue
-                            pass
+                            logger.debug("Could not evaluate eigenvalue numerically", exc_info=True)
                     elif isinstance(ev, complex):
                         real_parts.append(ev.real)
                         imag_parts.append(ev.imag)
@@ -1405,7 +1435,7 @@ class SymbolicModel:
 
         # Special case: saddle
         if base == "saddle":
-            return f"saddle_point"
+            return "saddle_point"
 
         # Combine
         if base in ["stable", "unstable"]:
@@ -1569,7 +1599,7 @@ class SymbolicModel:
 
         except Exception as e:
             # Return empty sensitivities on failure
-            pass
+            logger.debug("Sensitivity computation failed: %s", e)
 
         return sensitivities
 
@@ -1687,12 +1717,14 @@ class SymbolicModel:
                         else:
                             var_elasticities[param] = 0.0
                     except Exception:
+                        logger.debug("Elasticity computation failed", exc_info=True)
                         var_elasticities[param] = 0.0
 
                 elasticities[output_var] = var_elasticities
 
         except Exception as e:
             # Return zeros if computation fails
+            logger.debug("Elasticity computation failed: %s", e)
             elasticities = {var: {} for var in output_vars}
 
         return elasticities
@@ -1747,7 +1779,7 @@ class SymbolicModel:
             base_eq[var_name] = val
 
         # For each parameter
-        for param_name in params.keys():
+        for param_name in params:
             param_val = params[param_name]
 
             # Create perturbed params
@@ -1796,6 +1828,7 @@ class SymbolicModel:
                     perturbations[var_name][param_name] = percent_change
 
             except Exception:
+                logger.debug("Perturbation computation failed", exc_info=True)
                 for var_name in output_vars:
                     if var_name not in perturbations:
                         perturbations[var_name] = {}

@@ -14,11 +14,11 @@ Usage:
     model.plot_traces()
 """
 
-from epimodels.stochastic.CTMC.models import CTMCModel, SIR, SIS, SIRS, SEIR
+from epimodels.stochastic.CTMC.models import SEIR, SIR, SIRS, SIS, CTMCModel
 from epimodels.stochastic.CTMC.solvers import (
     CTMCSolverBase,
-    GillespieSolver,
     CTMCTrajectory,
+    GillespieSolver,
 )
 
 __all__ = [

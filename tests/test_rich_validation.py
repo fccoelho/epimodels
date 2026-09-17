@@ -3,15 +3,15 @@ Tests for rich parameter and state variable validation.
 """
 
 import pytest
-from epimodels import ValidationError
+
 from epimodels.validation import (
+    DomainType,
+    ModelConstraint,
     ParameterSpec,
     VariableSpec,
-    ModelConstraint,
-    DomainType,
-    validate_parameter_value,
-    validate_initial_condition,
     evaluate_constraint,
+    validate_initial_condition,
+    validate_parameter_value,
 )
 
 

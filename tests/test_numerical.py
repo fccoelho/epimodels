@@ -5,9 +5,10 @@ Tests population conservation, equilibrium behavior, and edge cases.
 """
 
 import numpy as np
-import pytest
-from epimodels.continuous import SIR, SIS, SIRS, SEIR
-from epimodels.discrete import SIR as DiscreteSIR, SIS as DiscreteSIS
+
+from epimodels.continuous import SEIR, SIR, SIS
+from epimodels.discrete import SIR as DiscreteSIR
+from epimodels.discrete import SIS as DiscreteSIS
 
 
 class TestPopulationConservation:
@@ -50,7 +51,7 @@ class TestPopulationConservation:
         """S+I should equal N at all times in discrete SIS."""
         model = DiscreteSIS()
         N = 1000
-        model([0, 10, 990], [0, 100], N, {"beta": 0.3, "gamma": 0.1})
+        model([990, 10], [0, 100], N, {"beta": 0.3, "gamma": 0.1})
 
         total = model.traces["S"] + model.traces["I"]
         assert np.allclose(total, N, rtol=1e-10), (

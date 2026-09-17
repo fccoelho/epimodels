@@ -7,11 +7,12 @@ License: GPL-v3
 
 __author__ = "fccoelho"
 
-import numpy as np
-import copy
 from collections import OrderedDict
 from typing import Any
-from epimodels import BaseModel
+
+import numpy as np
+
+from epimodels import BaseModel, BetaGammaR0Mixin, BetaRR0Mixin
 
 
 class DiscreteModel(BaseModel):
@@ -115,7 +116,7 @@ class Influenza(DiscreteModel):
             "pp4": r"pp_4",
             "b": "b",
         }
-        # self.run = self.model
+        self.run = self.model
 
     @property
     def diagram(self) -> str:
@@ -278,7 +279,7 @@ Ic4 -->|$$\beta$$| Ig4(Comp_age4)
             "E1": E1,
             "Is1": Is1,
             "Ic1": Ic1,
-            "Igl": Ig1,
+            "Ig1": Ig1,
             "S2": S2,
             "E2": E2,
             "Is2": Is2,
@@ -298,7 +299,7 @@ Ic4 -->|$$\beta$$| Ig4(Comp_age4)
         }
 
 
-class SIS(DiscreteModel):
+class SIS(BetaGammaR0Mixin, DiscreteModel):
     def __init__(self):
         super().__init__()
         self.model_type = "SIS"
@@ -316,19 +317,6 @@ S(Susceptible) -->|$$\beta$$| I(Infectious)
 I -->|$$\gamma$$| S
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SIS model.
-
-        R0 = β / γ
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
-
     def model(
         self,
         inits: list[float],
@@ -338,18 +326,17 @@ I -->|$$\gamma$$| S
     ) -> dict:
         """
         calculates the model SIS, and return its values (no demographics)
-        - inits = (E,I,S)
+        - inits = (S,I)
         :param trange:
         :param params:
         :param inits: tuple with initial conditions
-        :param simstep: step of the simulation
         :param totpop: total population
         :return:
         """
         S: np.ndarray = np.zeros(trange[1] - trange[0])
         I: np.ndarray = np.zeros(trange[1] - trange[0])
         tspan = np.arange(*trange)
-        E, I[0], S[0] = inits
+        S[0], I[0] = inits
         N = totpop
 
         beta = params["beta"]
@@ -364,7 +351,7 @@ I -->|$$\gamma$$| S
         return {"S": S, "I": I, "time": tspan}
 
 
-class SIR(DiscreteModel):
+class SIR(BetaGammaR0Mixin, DiscreteModel):
     def __init__(self):
         super().__init__()
         self.model_type = "SIR"
@@ -381,23 +368,10 @@ S(Susceptible) -->|$$\beta$$| I(Infectious)
 I -->|$$\gamma$$| R(Removed)
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SIR model.
-
-        R0 = β / γ
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
-
     def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
         calculates the model SIR, and return its values (no demographics)
-        - inits = (E,I,S)
+        - inits = (S,I,R)
         - theta = infectious individuals from neighbor sites
         """
         S: np.ndarray = np.zeros(trange[1] - trange[0])
@@ -420,7 +394,7 @@ I -->|$$\gamma$$| R(Removed)
         return {"time": tspan, "S": S, "I": I, "R": R}
 
 
-class SEIS(DiscreteModel):
+class SEIS(BetaRR0Mixin, DiscreteModel):
     def __init__(self):
         super().__init__()
         self.model_type = "SEIS"
@@ -438,23 +412,10 @@ E -->|e| I(Infectious)
 I -->|r| S
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SEIS model.
-
-        R0 = β / r
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "r" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["r"])
-        return None
-
     def model(self, inits, trange, totpop, params):
         """
         Defines the model SEIS:
-        - inits = (E,I,S)
+        - inits = (S,E,I)
         - theta = infectious individuals from neighbor sites
         """
         S: np.ndarray = np.zeros(trange[1] - trange[0])
@@ -480,7 +441,7 @@ I -->|r| S
         return {"time": tspan, "S": S, "I": I, "E": E}
 
 
-class SEIR(DiscreteModel):
+class SEIR(BetaRR0Mixin, DiscreteModel):
     def __init__(self):
         super().__init__()
         self.model_type = "SEIR"
@@ -509,23 +470,10 @@ E -->|e| I(Infectious)
 I -->|r| R(Removed)
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SEIR model.
-
-        R0 = β / r
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "r" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["r"])
-        return None
-
     def model(self, inits, trange, totpop, params):
         """
         Defines the model SEIR:
-        - inits = (E,I,S)
+        - inits = (S,E,I,R)
         - par = (Beta, alpha, E,r,delta,B,w,p) see docs.
         - theta = infectious individuals from neighbor sites
         """
@@ -581,7 +529,7 @@ I -->|"$$r*(1-\delta)$$"| S
     def model(self, inits, trange, totpop, params):
         """
         calculates the model SIpRpS, and return its values (no demographics)
-        - inits = (E,I,S)
+        - inits = (S,I,R)
         - theta = infectious individuals from neighbor sites
         """
         S: np.ndarray = np.zeros(trange[1] - trange[0])
@@ -639,7 +587,7 @@ I -->|"$$r(1-\delta)$$"| S
     def model(self, inits: list, trange, totpop, params):
         """
         Defines the model SEIpRpS:
-        - inits = (E,I,S)
+        - inits = (S,E,I,R)
         - trange = (time_start, time_end)
         - totpop = total population
         - params = (Beta, alpha, E,r,delta,B,w,p) see docs.
@@ -791,12 +739,12 @@ R -->|$$p\beta$$| E
 # ]
 #
 # @jitclass(spec)
-class SIRS(DiscreteModel):
+class SIRS(BetaRR0Mixin, DiscreteModel):
     def __init__(self):
         super().__init__()
         self.model_type = "SIRS"
         self.state_variables = {"R": "Removed", "I": "Infectious", "S": "Susceptible"}
-        self.parameters = {"beta": r"$\beta$", "b": "b", "w": "w"}
+        self.parameters = {"beta": r"$\beta$", "r": "r", "b": "b", "w": "w"}
         self.run = self.model
 
     @property
@@ -809,23 +757,10 @@ I -->|r| R(Removed)
 R -->|w| S
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SIRS model.
-
-        R0 = β / r
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "r" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["r"])
-        return None
-
     def model(self, inits: list, trange: list, totpop: int, params: dict) -> dict:
         """
         calculates the model SIRS, and return its values (no demographics)
-        :param inits: (E,I,S)
+        :param inits: (S,I,R)
         :param trange:
         :param totpop:
         :param params:
@@ -871,7 +806,7 @@ class SEQIAHR(DiscreteModel):
         )
         self.parameters = OrderedDict(
             {
-                "chi": r"$\chi",
+                "chi": r"$\chi$",
                 "phi": r"$\phi$",
                 "beta": r"$\beta$",
                 "rho": r"$\rho$",
@@ -917,7 +852,17 @@ H -->|$$\mu$$| D(Deaths)
         S[0], E[0], I[0], A[0], H[0], R[0], C[0], D[0] = inits
 
         N = totpop
-        chi, phi, beta, rho, delta, gamma, alpha, mu, p, q, r = params.values()
+        chi = params["chi"]
+        phi = params["phi"]
+        beta = params["beta"]
+        rho = params["rho"]
+        delta = params["delta"]
+        gamma = params["gamma"]
+        alpha = params["alpha"]
+        mu = params["mu"]
+        p = params["p"]
+        q = params["q"]
+        r = params["r"]
 
         for i in tspan[:-1]:
             # Turns on Quarantine on day q and off on day q+r

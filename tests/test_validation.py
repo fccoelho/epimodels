@@ -3,9 +3,10 @@ Tests for parameter and initial condition validation.
 """
 
 import pytest
+
 from epimodels import ValidationError
-from epimodels.continuous import SIR, SIS, SEIR
-from epimodels.discrete import SIR as DiscreteSIR, SIS as DiscreteSIS
+from epimodels.continuous import SIR
+from epimodels.discrete import SIR as DiscreteSIR
 
 
 class TestParameterValidation:

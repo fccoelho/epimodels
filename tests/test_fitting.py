@@ -2,37 +2,33 @@
 Tests for the fitting module.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 from epimodels.continuous.models import SIR
 from epimodels.fitting import (
-    Dataset,
     DataSeries,
-    ValidationResult,
-    ParameterSpec,
-    FittingResult,
+    Dataset,
+    FittingError,
+    HuberLoss,
     ModelFitter,
-    fit_model,
-    SumOfSquaredErrors,
-    WeightedSSE,
-    PoissonLikelihood,
     NegativeBinomialLikelihood,
     NormalLikelihood,
-    HuberLoss,
+    ParameterSpec,
+    PoissonLikelihood,
     ScipyOptimizer,
-    MultiStartOptimizer,
-    FittingError,
-    DataValidationError,
+    SumOfSquaredErrors,
+    WeightedSSE,
+    fit_model,
 )
 from epimodels.fitting.utils import (
-    interpolate_to_times,
     convert_time_unit,
-    get_conversion_factor,
-    rescale_parameter,
-    unscale_parameter,
     ensure_monotonic,
     find_time_overlap,
+    get_conversion_factor,
+    interpolate_to_times,
+    rescale_parameter,
+    unscale_parameter,
 )
 
 

@@ -6,11 +6,11 @@ epidemiological models, including Continuous-Time Markov Chain (CTMC)
 models solved via the Gillespie algorithm.
 """
 
-from epimodels.stochastic.CTMC.models import CTMCModel, SIR, SIS, SIRS, SEIR
+from epimodels.stochastic.CTMC.models import SEIR, SIR, SIRS, SIS, CTMCModel
 from epimodels.stochastic.CTMC.solvers import (
     CTMCSolverBase,
-    GillespieSolver,
     CTMCTrajectory,
+    GillespieSolver,
 )
 
 __all__ = [

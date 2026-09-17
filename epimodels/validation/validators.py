@@ -2,13 +2,11 @@
 Validation functions for parameter values, initial conditions, and constraints.
 """
 
-import re
 import ast
 import operator
 from typing import Any
-from epimodels.exceptions import ValidationError
-from epimodels.validation.specs import ParameterSpec, VariableSpec
 
+from epimodels.validation.specs import ParameterSpec, VariableSpec
 
 COMPARISON_OPS = {
     ast.Eq: operator.eq,

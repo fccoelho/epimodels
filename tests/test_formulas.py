@@ -8,6 +8,7 @@ sympy = pytest.importorskip("sympy")
 import sympy as sp
 
 from epimodels import FormulaExtractionError
+from epimodels.continuous import SEIR, SIR, SIRS, SIS
 from epimodels.formulas import (
     extract_formulas,
     get_free_symbols,
@@ -15,8 +16,6 @@ from epimodels.formulas import (
     validate_formulas,
     validate_model_method,
 )
-from epimodels.continuous import SIR, SIS, SIRS, SEIR
-
 
 # =============================================================================
 # Test Fixtures

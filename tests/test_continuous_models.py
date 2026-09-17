@@ -1,6 +1,7 @@
-from matplotlib import pyplot as P
 import numpy as np
-from epimodels.continuous import SIS, SIR, SIR1D, SIRS, SEIR, SEQIAHR, Dengue4Strain
+from matplotlib import pyplot as P
+
+from epimodels.continuous import SEIR, SEQIAHR, SIR, SIR1D, SIRS, SIS, Dengue4Strain
 
 
 def test_SIR():

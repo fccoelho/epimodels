@@ -11,19 +11,18 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from xml.dom import minidom
 
 if TYPE_CHECKING:
     import sympy as sp
+
     from epimodels.continuous import ContinuousModel
 
 from epimodels.formulas import (
     FormulaExtractionError,
     extract_formulas,
-    get_free_symbols,
     sympy_to_vfgen,
-    validate_formulas,
 )
 
 

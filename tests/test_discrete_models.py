@@ -1,23 +1,23 @@
+
 from epimodels.discrete import (
+    SEIR,
+    SEIS,
+    SEQIAHR,
+    SIR,
+    SIRS,
+    SIS,
     DiscreteModel,
     Influenza,
-    SIS,
-    SIR,
-    SEIS,
-    SEIR,
-    SIpRpS,
+    SEIpR,
     SEIpRpS,
     SIpR,
-    SEIpR,
-    SIRS,
-    SEQIAHR,
+    SIpRpS,
 )
-from matplotlib import pyplot as P
 
 
 def test_SIS():
     modelsis = SIS()
-    modelsis([0, 1, 1000], [0, 50], 1001, {"beta": 2, "gamma": 1})
+    modelsis([1000, 1], [0, 50], 1001, {"beta": 2, "gamma": 1})
     assert len(modelsis.traces) == 3
     assert len(modelsis.traces["time"]) == 50
     modelsis.plot_traces()

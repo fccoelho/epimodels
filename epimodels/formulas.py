@@ -11,10 +11,13 @@ import ast
 import inspect
 import warnings
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+import numpy as np
 
 if TYPE_CHECKING:
     import sympy as sp
+
     from epimodels.continuous import ContinuousModel
 
 from epimodels import FormulaExtractionError
@@ -182,7 +185,7 @@ def extract_formulas(model: ContinuousModel) -> dict[str, sp.Expr]:
         raise FormulaExtractionError(
             model_name=model_name,
             reason=issue.message,
-            suggestion=f"Define formulas manually by setting model._formulas = {{...}}",
+            suggestion="Define formulas manually by setting model._formulas = {...}",
         )
 
     # Issue warnings for non-critical issues
@@ -221,12 +224,31 @@ def extract_formulas(model: ContinuousModel) -> dict[str, sp.Expr]:
         "E": sp.E,
     }
 
+    class _SymPyNumPyProxy:
+        """Map ``np.<func>`` attribute access to SymPy equivalents during
+        symbolic execution, falling back to real numpy otherwise."""
+
+        def __getattr__(self, name: str):
+            if name in numpy_to_sympy_globals:
+                return numpy_to_sympy_globals[name]
+            return getattr(np, name)
+
     # Prepare state variable list in order
     y_list = [state_syms[name] for name in model.state_variables]
 
+    # Temporarily swap the ``np`` name in the _model function's globals so
+    # that models calling numpy functions (np.exp, np.tanh, ...) can still
+    # be symbolically executed.
+    fn = model._model
+    fn_globals = getattr(fn, "__globals__", None)
+    has_np = fn_globals is not None and "np" in fn_globals
+    saved_np = fn_globals.get("np") if has_np else None
+
     try:
+        if has_np:
+            fn_globals["np"] = _SymPyNumPyProxy()
         # Execute _model with symbols (type ignore: intentional for symbolic execution)
-        result = model._model(t_sym, y_list, param_syms)  # type: ignore
+        result = fn(t_sym, y_list, param_syms)  # type: ignore
     except TypeError as e:
         raise FormulaExtractionError(
             model_name=model_name,
@@ -247,6 +269,9 @@ def extract_formulas(model: ContinuousModel) -> dict[str, sp.Expr]:
             reason=f"Symbolic execution failed: {type(e).__name__}: {e}",
             suggestion="Define formulas manually via model._formulas = {...}",
         ) from e
+    finally:
+        if has_np:
+            fn_globals["np"] = saved_np
 
     # Validate results
     if result is None:
@@ -341,7 +366,6 @@ def sympy_to_vfgen(expr: sp.Expr) -> str:
     Returns:
         String representation compatible with vfgen
     """
-    import sympy as sp
 
     # Convert to string
     # sympy uses ** for power, vfgen uses ^

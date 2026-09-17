@@ -2,13 +2,13 @@
 Tests for solver abstraction layer.
 """
 
-import pytest
 import numpy as np
+import pytest
+
 from epimodels.solvers import (
-    SolverResult,
-    SolverBase,
-    ScipySolver,
     DiffraxSolver,
+    ScipySolver,
+    SolverResult,
     get_default_solver,
 )
 

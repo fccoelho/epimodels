@@ -11,11 +11,9 @@ import pytest
 sympy = pytest.importorskip("sympy")
 import sympy as sp
 
-from epimodels import FormulaExtractionError
-from epimodels.continuous import SIR, SIS, SIRS, SEIR
+from epimodels.continuous import SEIR, SIR, SIRS, SIS
 from epimodels.discrete import SIR as DiscreteSIR
 from epimodels.exporters import VFGenExporter
-
 
 # =============================================================================
 # Test Fixtures
@@ -235,9 +233,7 @@ class TestStateVariableElements:
                 assert "beta" in formula
                 assert "S" in formula
                 assert "I" in formula
-            elif name == "I":
-                assert "gamma" in formula
-            elif name == "R":
+            elif name == "I" or name == "R":
                 assert "gamma" in formula
 
     def test_xml_state_variable_initial_conditions(self, sir_model):

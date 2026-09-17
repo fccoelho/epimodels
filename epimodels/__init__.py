@@ -1,17 +1,17 @@
-from importlib.metadata import PackageNotFoundError, version
-from typing import TYPE_CHECKING, Any
 import copy as copy_module
 import warnings
+from importlib.metadata import PackageNotFoundError, version
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import pandas as pd
 
 from epimodels.exceptions import ValidationError
-from epimodels.validation.specs import ParameterSpec, VariableSpec, ModelConstraint
+from epimodels.validation.specs import ModelConstraint, ParameterSpec, VariableSpec
 from epimodels.validation.validators import (
-    validate_parameter_value,
-    validate_initial_condition,
     evaluate_constraint,
+    validate_initial_condition,
+    validate_parameter_value,
 )
 
 
@@ -47,7 +47,50 @@ except PackageNotFoundError:
 finally:
     del version, PackageNotFoundError
 
-from matplotlib import pyplot as plt
+
+class BetaGammaR0Mixin:
+    """
+    Mixin providing a basic reproduction number R0 = beta/gamma.
+
+    For models whose R0 has this simple form, inheriting from this mixin
+    avoids duplicating the same property in every model class.
+    """
+
+    param_values: dict[str, Any]
+
+    @property
+    def R0(self) -> float | None:
+        """
+        Basic reproduction number R0 = beta/gamma.
+
+        :return: Basic reproduction number, or None if parameters not set
+        """
+        pv = self.param_values
+        if pv and "beta" in pv and "gamma" in pv:
+            return float(pv["beta"] / pv["gamma"])
+        return None
+
+
+class BetaRR0Mixin:
+    """
+    Mixin providing a basic reproduction number R0 = beta/r.
+
+    For discrete models whose recovery rate is named ``r``.
+    """
+
+    param_values: dict[str, Any]
+
+    @property
+    def R0(self) -> float | None:
+        """
+        Basic reproduction number R0 = beta/r.
+
+        :return: Basic reproduction number, or None if parameters not set
+        """
+        pv = self.param_values
+        if pv and "beta" in pv and "r" in pv:
+            return float(pv["beta"] / pv["r"])
+        return None
 
 
 class BaseModel:
@@ -83,6 +126,12 @@ class BaseModel:
         self.variable_specs = {}
         self.model_constraints = []
         self.symbolic_model = None
+
+    def __call__(self, *args: Any, **kwargs: Any) -> None:
+        """Run the model. Subclasses must override this method."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement __call__"
+        )
 
     def validate_parameters(self, params: dict[str, Any]) -> None:
         """
@@ -260,6 +309,8 @@ class BaseModel:
         Plots the simulations
         :param vars: variables to plot
         """
+        from matplotlib import pyplot as plt
+
         if vars is None:
             vars = []
         for series, data in self.traces.items():
@@ -267,7 +318,7 @@ class BaseModel:
                 plt.plot(self.traces["time"], data, label=series)
         plt.legend(loc=0)
         plt.grid()
-        plt.title("{} model".format(self.model_type))
+        plt.title(f"{self.model_type} model")
 
     def parameter_table(self, latex: bool = False) -> dict | str:
         if self.parameters:
@@ -279,7 +330,7 @@ class BaseModel:
 
             if latex:
                 out = (
-                    r"""\begin[l|c|c]{tabular}
+                    r"""\begin{tabular}{l|c|c}
                 \hline
                 Parameter & Value & Symbol \\
                 \hline
@@ -385,19 +436,45 @@ class BaseModel:
         """
         Create a copy of the model configuration.
 
+        A deep copy is performed so that mutable state (parameter dicts,
+        state variables, specs, formulas, solver) is not shared between
+        the original and the copy.
+
         :param include_traces: If True, copy simulation results too
         :return: New model instance with same configuration
         """
-        new_model = copy_module.copy(self)
+        new_model = copy_module.deepcopy(self)
         if not include_traces:
             new_model.traces = {}
             new_model.param_values = {}
-        else:
-            new_model.traces = copy_module.deepcopy(self.traces)
-            new_model.param_values = copy_module.deepcopy(self.param_values)
         return new_model
 
     def reset(self) -> None:
         """Clear simulation results and parameter values."""
         self.traces = {}
         self.param_values = {}
+
+
+def get_model(name: str, family: str = "any") -> type:
+    """
+    Look up a model class by name across model families.
+
+    Thin wrapper around :func:`epimodels.registry.get_model`.
+
+    :param name: Model class name, e.g. "SIR"
+    :param family: "continuous", "discrete", "stochastic", "custom" or "any"
+    """
+    from epimodels.registry import get_model as _get_model
+
+    return _get_model(name, family)
+
+
+def list_models(family: str | None = None) -> dict:
+    """
+    List registered model names, grouped by family.
+
+    Thin wrapper around :func:`epimodels.registry.list_models`.
+    """
+    from epimodels.registry import list_models as _list_models
+
+    return _list_models(family)

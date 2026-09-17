@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from epimodels.continuous.models import SISLogistic, SIRSNonAutonomous, NeipelHeterogeneousSIR
+
+from epimodels.continuous.models import NeipelHeterogeneousSIR, SIRSNonAutonomous, SISLogistic
 
 
 def test_SISLogistic():
@@ -137,7 +138,7 @@ def test_NeipelHeterogeneousSIR_susceptible():
     tau = 0.0
 
     S = model.susceptible(tau, N, I0, alpha)
-    assert S == pytest.approx(N - I0)  # At tau=0, S = N - I0
+    assert pytest.approx(N - I0) == S  # At tau=0, S = N - I0
 
 
 def test_NeipelHeterogeneousSIR_removed():
@@ -152,7 +153,7 @@ def test_NeipelHeterogeneousSIR_removed():
     S = model.susceptible(tau, N, I0, alpha)
     R = model.removed(I, tau, N, I0, alpha)
 
-    assert S + I + R == pytest.approx(N)
+    assert pytest.approx(N) == S + I + R
 
 
 def test_NeipelHeterogeneousSIR_simulation():

@@ -3,7 +3,8 @@ Optimizers for model fitting.
 
 Provides multiple backend implementations:
 - ScipyOptimizer: Uses scipy.optimize
-- JAXOptimizer: Uses optimistix for GPU-accelerated optimization
+- JAXOptimizer: Projected gradient descent (Adam/RMSProp/SGD) with
+  finite-difference gradients; name kept for backward compatibility
 - NevergradOptimizer: Uses nevergrad for derivative-free optimization
 """
 
@@ -207,10 +208,22 @@ class ScipyOptimizer(Optimizer):
 
 class JAXOptimizer(Optimizer):
     """
-    JAX/optimistix-based optimizer for GPU acceleration.
+    Gradient-based optimizer using finite-difference gradients with
+    Adam/RMSProp/SGD-style updates.
 
-    Provides gradient-based optimization with automatic differentiation.
-    Requires jax and optimistix to be installed.
+    The name is kept for backward compatibility: unlike earlier versions,
+    this implementation does not require jax/optimistix and works with any
+    (possibly numpy-based, non-differentiable) simulation objective, which
+    cannot be differentiated symbolically. Gradients are estimated with
+    central differences; updates are projected onto ``bounds`` when given.
+
+    Args:
+        method: Update rule ('adam', 'adabelief', 'rmsprop', 'sgd')
+        learning_rate: Learning rate for gradient descent
+        max_iterations: Maximum number of iterations
+        tolerance: Convergence tolerance on the loss change
+        options: Additional options, e.g. ``fd_epsilon`` (finite-difference
+            step size, default 1e-5), ``beta1``/``beta2`` (Adam moments)
     """
 
     def __init__(
@@ -221,29 +234,11 @@ class JAXOptimizer(Optimizer):
         tolerance: float = 1e-8,
         options: dict[str, Any] | None = None,
     ):
-        """
-        Args:
-            method: Optimization method ('adam', 'sgd', 'rmsprop', 'lamb', 'adabelief')
-            learning_rate: Learning rate for gradient descent
-            max_iterations: Maximum number of iterations
-            tolerance: Convergence tolerance
-            options: Additional method-specific options
-        """
         self.method = method.lower()
         self.learning_rate = learning_rate
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.options = options or {}
-
-    def _check_dependencies(self):
-        try:
-            import jax
-            import optimistix
-        except ImportError as e:
-            raise ImportError(
-                "JAXOptimizer requires jax and optimistix. "
-                "Install with: pip install jax optimistix"
-            ) from e
 
     def minimize(
         self,
@@ -252,62 +247,97 @@ class JAXOptimizer(Optimizer):
         bounds: list[tuple[float, float]] | None = None,
         callback: Callable[[int, NDArray[np.floating], float], None] | None = None,
     ) -> OptimizerResult:
-        self._check_dependencies()
+        eps = float(self.options.get("fd_epsilon", 1e-5))
+        beta1 = float(self.options.get("beta1", 0.9))
+        beta2 = float(self.options.get("beta2", 0.999))
+        fd_eps_adam = 1e-8
 
-        import jax.numpy as jnp
-        import optimistix as optx
+        x = np.asarray(initial_params, dtype=float).copy()
+        n = len(x)
+        m = np.zeros(n)
+        v = np.zeros(n)
 
-        self._loss_history = []
+        self._loss_history: list[float] = []
+        n_evals = 0
 
-        def loss_fn(params, args):
-            loss = float(objective_fn(np.array(params)))
-            self._loss_history.append(loss)
-            return jnp.array(loss)
+        def loss(params: NDArray[np.floating]) -> float:
+            nonlocal n_evals
+            n_evals += 1
+            value = float(objective_fn(params))
+            self._loss_history.append(value)
+            return value
 
-        solver_methods = {
-            "adam": optx.Adam,
-            "adabelief": optx.Adam,
-            "rmsprop": optx.RMSProp,
-            "sgd": optx.SGD,
-        }
+        def project(params: NDArray[np.floating]) -> NDArray[np.floating]:
+            if bounds is None:
+                return params
+            lower = np.array([b[0] for b in bounds])
+            upper = np.array([b[1] for b in bounds])
+            return np.clip(params, lower, upper)
 
-        solver_cls = solver_methods.get(self.method, optx.Adam)
-        solver = solver_cls(
-            learning_rate=self.learning_rate,
-            **self.options,
-        )
+        def gradient(x0: NDArray[np.floating], f0: float) -> NDArray[np.floating]:
+            """Central-difference gradient estimate."""
+            g = np.zeros(n)
+            for i in range(n):
+                h = eps * max(1.0, abs(x0[i]))
+                xp = x0.copy()
+                xp[i] += h
+                xm = x0.copy()
+                xm[i] -= h
+                g[i] = (objective_fn(xp) - objective_fn(xm)) / (2 * h)
+            return g
 
-        y0 = jnp.array(initial_params)
+        x = project(x)
+        f_current = loss(x)
+        best_x = x.copy()
+        best_loss = f_current
+        message = "Maximum iterations reached"
+        success = False
 
-        try:
-            result = optx.minimise(
-                loss_fn,
-                solver,
-                y0,
-                has_aux=False,
-                max_steps=self.max_iterations,
-                tol=self.tolerance,
-            )
-            best_params = np.array(result)
-            best_loss = float(loss_fn(result, None))
-            success = True
-            message = "Optimization complete"
-        except Exception as e:
-            best_params = np.array(y0)
-            best_loss = float(loss_fn(y0, None))
-            success = False
-            message = str(e)
+        for t in range(1, self.max_iterations + 1):
+            if callback is not None:
+                callback(t, x.copy(), f_current)
 
-        if bounds is not None:
-            for i, (lower, upper) in enumerate(bounds):
-                best_params[i] = np.clip(best_params[i], lower, upper)
+            g = gradient(x, f_current)
+
+            if self.method == "sgd":
+                x = x - self.learning_rate * g
+            elif self.method == "rmsprop":
+                v = beta2 * v + (1 - beta2) * g * g
+                x = x - self.learning_rate * g / (np.sqrt(v) + fd_eps_adam)
+            else:  # adam / adabelief
+                m = beta1 * m + (1 - beta1) * g
+                v = beta2 * v + (1 - beta2) * g * g
+                m_hat = m / (1 - beta1**t)
+                v_hat = v / (1 - beta2**t)
+                x = x - self.learning_rate * m_hat / (np.sqrt(v_hat) + fd_eps_adam)
+
+            x = project(x)
+            f_new = loss(x)
+
+            if not np.isfinite(f_new):
+                message = "Non-finite loss encountered"
+                break
+
+            if f_new < best_loss:
+                best_loss = f_new
+                best_x = x.copy()
+
+            if abs(f_current - f_new) < self.tolerance:
+                f_current = f_new
+                success = True
+                message = "Converged: loss change below tolerance"
+                break
+
+            f_current = f_new
+        else:
+            success = np.isfinite(f_current)
 
         return OptimizerResult(
-            best_params=best_params,
-            best_loss=best_loss,
-            success=success,
+            best_params=best_x,
+            best_loss=float(best_loss),
+            success=bool(success),
             message=message,
-            n_evaluations=len(self._loss_history),
+            n_evaluations=n_evals,
             n_iterations=len(self._loss_history),
             loss_history=self._loss_history,
         )
@@ -342,7 +372,7 @@ class NevergradOptimizer(Optimizer):
 
     def _check_dependencies(self):
         try:
-            import nevergrad
+            import nevergrad  # noqa: F401 -- availability check
         except ImportError as e:
             raise ImportError(
                 "NevergradOptimizer requires nevergrad. " "Install with: pip install nevergrad"

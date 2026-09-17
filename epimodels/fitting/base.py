@@ -2,6 +2,7 @@
 Base classes and main API for model fitting.
 """
 
+import logging
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -23,6 +24,8 @@ from epimodels.fitting.utils import (
     rescale_parameter,
     unscale_parameter,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -135,6 +138,7 @@ class ModelFitter:
         fixed_params: dict[str, float] | None = None,
         solver_options: dict[str, Any] | None = None,
         time_offset: float = 0.0,
+        raise_on_error: bool = False,
     ):
         """
         Initialize the model fitter.
@@ -151,6 +155,8 @@ class ModelFitter:
             fixed_params: Dictionary of fixed parameter values
             solver_options: Options to pass to the model solver
             time_offset: Time offset for model simulation
+            raise_on_error: If True, re-raise exceptions from model evaluation
+                instead of returning a large penalty loss (default: False)
         """
         self.model = model
         self.dataset = dataset
@@ -163,6 +169,7 @@ class ModelFitter:
         self.fixed_params = fixed_params or {}
         self.solver_options = solver_options or {}
         self.time_offset = time_offset
+        self.raise_on_error = raise_on_error
 
         self._validate_inputs()
 
@@ -409,7 +416,23 @@ class ModelFitter:
             return loss_result.value
 
         except Exception as e:
-            warnings.warn(f"Model evaluation failed: {e}", RuntimeWarning)
+            if self.raise_on_error:
+                raise
+            # A failing _model yields a flat penalty surface: warn once with
+            # full traceback so silent "converged" garbage fits are visible.
+            logger.warning(
+                "Model evaluation failed for params %s: %s",
+                params_dict,
+                e,
+                exc_info=True,
+            )
+            warnings.warn(
+                f"Model evaluation failed: {e}. Further failures logged at "
+                "'epimodels.fitting' logger. Pass raise_on_error=True to raise instead.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            warnings.filterwarnings("once", category=RuntimeWarning)
             return 1e10
 
     def fit(

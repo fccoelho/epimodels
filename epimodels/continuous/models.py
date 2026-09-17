@@ -4,16 +4,16 @@ by fccoelho
 license: GPL V3 or Later
 """
 
-import numpy as np
-import sympy as sp
-from epimodels import BaseModel
 import logging
 from collections import OrderedDict
-from typing import Any, Union
-import copy
-import matplotlib.pyplot as plt
+from typing import Any
 
-logging.basicConfig(filename="epimodels.log", filemode="w", level=logging.DEBUG)
+import numpy as np
+import sympy as sp
+
+from epimodels import BaseModel, BetaGammaR0Mixin
+
+logger = logging.getLogger(__name__)
 
 
 class ContinuousModel(BaseModel):
@@ -78,7 +78,6 @@ class ContinuousModel(BaseModel):
         raise NotImplementedError
 
     def __repr__(self):
-        f = copy.deepcopy(self._model)
         desc = f"""
 # Model: {self.model_type}
 
@@ -97,7 +96,7 @@ class ContinuousModel(BaseModel):
         return len(self.state_variables)
 
     def run(self, inits, trange, totpop, params, **kwargs):
-        params["N"] = totpop
+        params = {**params, "N": totpop}
 
         def fn(t, y):
             return self._model(t, y, params)
@@ -145,17 +144,9 @@ class ContinuousModel(BaseModel):
 
     def _validate_formulas(self, formulas: dict) -> None:
         """Validate manually defined formulas."""
-        from sympy import Expr
+        from epimodels.formulas import validate_formulas
 
-        missing_states = set(self.state_variables) - set(formulas)
-        if missing_states:
-            raise ValueError(f"Formulas missing for state variables: {missing_states}")
-
-        for name, expr in formulas.items():
-            if not isinstance(expr, (Expr, int, float)):
-                raise TypeError(
-                    f"Formula for '{name}' must be a SymPy expression, got {type(expr).__name__}"
-                )
+        validate_formulas(self, formulas)
 
     def to_vfgen(
         self,
@@ -200,7 +191,7 @@ class ContinuousModel(BaseModel):
         )
 
 
-class SIR(ContinuousModel):
+class SIR(BetaGammaR0Mixin, ContinuousModel):
     """
     SIR (Susceptible-Infectious-Removed) Model.
 
@@ -244,19 +235,6 @@ class SIR(ContinuousModel):
 S(Susceptible) -->|$$\beta$$| I(Infectious)
 I -->|$$\gamma$$| R(Removed)
 """
-
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SIR model.
-
-        R0 = β / γ
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         S, I, R = y
@@ -304,7 +282,7 @@ I -->|$$\gamma$$| R(Recovered)
         return [gamma * (N - R - (S0 * np.exp(-R0 * R)))]
 
 
-class SIS(ContinuousModel):
+class SIS(BetaGammaR0Mixin, ContinuousModel):
     """
     SIS (Susceptible-Infectious-Susceptible) Model.
 
@@ -346,19 +324,6 @@ S(Susceptible) -->|$$\beta$$| I(Infectious)
 I -->|$$\gamma$$| S
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SIS model.
-
-        R0 = β / γ
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
-
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         S, I = y
         beta, gamma, N = params["beta"], params["gamma"], params["N"]
@@ -368,7 +333,7 @@ I -->|$$\gamma$$| S
         ]
 
 
-class SIRS(ContinuousModel):
+class SIRS(BetaGammaR0Mixin, ContinuousModel):
     """
     SIRS (Susceptible-Infectious-Removed-Susceptible) Model.
 
@@ -413,19 +378,6 @@ I -->|$$\gamma$$| R(Removed)
 R -->|$$\xi$$| S
 """
 
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SIRS model.
-
-        R0 = β / γ
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
-
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         S, I, R = y
         beta, gamma, xi, N = params["beta"], params["gamma"], params["xi"], params["N"]
@@ -436,7 +388,7 @@ R -->|$$\xi$$| S
         ]
 
 
-class SEIR(ContinuousModel):
+class SEIR(BetaGammaR0Mixin, ContinuousModel):
     """
     SEIR (Susceptible-Exposed-Infectious-Removed) Model.
 
@@ -487,19 +439,6 @@ S(Susceptible) -->|$$\beta$$| E(Exposed)
 E -->|$$\epsilon$$| I(Infectious)
 I -->|$$\gamma$$| R(Removed)
 """
-
-    @property
-    def R0(self) -> float | None:
-        """
-        Basic reproduction number for SEIR model.
-
-        R0 = β / γ
-
-        :return: Basic reproduction number, or None if parameters not set
-        """
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         S, E, I, R = y
@@ -566,7 +505,17 @@ H -->|$$\mu$$| D(Deaths)
 
     def _model(self, t: float, y: list[float], params: dict[str, float]) -> list[float]:
         S, E, I, A, H, R, C, D = y
-        chi, phi, beta, rho, delta, gamma, alpha, mu, p, q, r, N = params.values()
+        chi = params["chi"]
+        phi = params["phi"]
+        beta = params["beta"]
+        rho = params["rho"]
+        delta = params["delta"]
+        gamma = params["gamma"]
+        alpha = params["alpha"]
+        mu = params["mu"]
+        p = params["p"]
+        q = params["q"]
+        r = params["r"]
         lamb = beta * (I + A)
         # Turns on Quarantine on day q and off on day q+r
         chi *= ((1 + np.tanh(t - q)) / 2) * ((1 - np.tanh(t - (q + r))) / 2)
@@ -1377,7 +1326,7 @@ class SIRSEI(ContinuousModel):
 
         p = self.param_values
 
-        required = ["b1", "b2", "gamma"]
+        required = ["b1", "b2", "gamma", "T1", "T_prime", "D1", "A", "B", "C", "DD", "Tmin"]
 
         if not all(k in p for k in required):
             return None
@@ -1405,6 +1354,25 @@ class SIRSEI(ContinuousModel):
             return None
 
         p = self.param_values
+
+        required = [
+            "b1",
+            "b2",
+            "gamma",
+            "T1",
+            "T2",
+            "omega1",
+            "phi1",
+            "T_prime",
+            "D1",
+            "A",
+            "B",
+            "C",
+            "DD",
+            "Tmin",
+        ]
+        if not all(k in p for k in required):
+            return None
 
         T = p["T1"] + p["T2"] * np.cos(p["omega1"] * t + p["phi1"])
 
@@ -1485,8 +1453,10 @@ class SIRSEI(ContinuousModel):
         figsize : tuple, optional
             Figure size (width, height)
         """
+        import matplotlib.pyplot as plt
+
         if not self.traces or "time" not in self.traces:
-            print(
+            logger.warning(
                 "No data available. Run the model first with: model(inits, trange, totpop, params)"
             )
             return
@@ -2006,7 +1976,7 @@ class SEIRS_SEI(ContinuousModel):
         """Sporogonic cycle duration."""
         DD = self.param_values.get("DD", 105.0)
         Tmin = self.param_values.get("Tmin", 14.5)
-        if T <= Tmin:
+        if Tmin >= T:
             return 50.0
         return DD / (T - Tmin)
 
@@ -2363,8 +2333,8 @@ class SIR2Strain(ContinuousModel):
         self.parameters = OrderedDict(
             {
                 "beta": r"$\beta$",  #  infection rate
-                "gamma": r"$\gamma",  # recovery rate
-                "mu": r"$\mu",  # birth and death rate
+                "gamma": r"$\gamma$",  # recovery rate
+                "mu": r"$\mu$",  # birth and death rate
                 "rho": r"$\rho$",  # ratio of secondary infections contributing
                 "phi": r"$\phi$",  # import parameter
                 "alpha": r"$\alpha$",  # temporary cross-immunity
@@ -2548,7 +2518,7 @@ class SIRSNonAutonomous(ContinuousModel):
         return [dSdt, dIdt, dRdt]
 
 
-class NeipelHeterogeneousSIR(ContinuousModel):
+class NeipelHeterogeneousSIR(BetaGammaR0Mixin, ContinuousModel):
     """
     Heterogeneous SIR model based on Neipel et al. (2020).
 
@@ -2598,12 +2568,6 @@ class NeipelHeterogeneousSIR(ContinuousModel):
 S(Susceptible heterogeneous) -->|$$\beta, \alpha$$| I(Infectious)
 I -->|$$\gamma$$| R(Removed)
 """
-
-    @property
-    def R0(self) -> float | None:
-        if self.param_values and "beta" in self.param_values and "gamma" in self.param_values:
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
 
     def susceptible(self, tau: float, N: float, I0: float, alpha: float) -> float:
         return (N - I0) * (1 + tau / alpha) ** (-alpha)
