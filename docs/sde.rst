@@ -30,8 +30,8 @@ Basic usage
     sde = SDEModel(SIR())
 
     sde(
-        [999, 1, 0], [0, 100], 1000,
-        {"beta": 2.0, "gamma": 0.5},
+        [990, 10, 0], [0, 100], 1000,
+        {"beta": 0.5, "gamma": 0.25},
         n_sims=50,          # independent trajectories
         seed=42,            # reproducibility
     )
@@ -39,6 +39,10 @@ Basic usage
     sde.get_mean()                    # ensemble mean trajectory
     sde.get_quantiles(0.95)           # 95% band per variable
     sde.plot_traces("I")              # replicate spaghetti + mean
+
+.. image:: _static/sde_traces.png
+    :align: center
+    :alt: 50 stochastic SIR trajectories with their mean
 
 With ``n_sims=1`` the traces are 1D arrays; with ``n_sims > 1`` they have
 shape ``(n_sims, n_points)``, mirroring the CTMC interface.
@@ -76,3 +80,9 @@ Models whose ``_model`` uses numpy-specific functions (e.g. ``np.tanh``),
 interpolation callables or internal history state (SIRSEI-family,
 ``SIRSNonAutonomous`` with callables) cannot run under JAX tracing. The
 classic SIR/SIS/SIRS/SEIR-family models work as-is.
+
+Numerical caveat: the Euler–Maruyama integrator does not preserve
+non-negativity. When a compartment is very small (e.g. a handful of
+initial infectives) the √-demographic noise can push it negative, in the
+worst case destabilizing the integration. Seed simulations with a
+sufficiently large infected population (10+), and keep ``dt`` moderate.

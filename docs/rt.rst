@@ -60,15 +60,19 @@ Validation against a simulated epidemic
     from epimodels.rt import estimate_rt
 
     model = SIR()
-    t_eval = np.arange(0, 60)
-    model([989, 10, 0], [0, 60], 1000, {"beta": 0.9, "gamma": 0.3}, t_eval=t_eval)
+    t_eval = np.arange(0, 80)
+    model([995, 5, 0], [0, 80], 1000, {"beta": 0.4, "gamma": 0.2}, t_eval=t_eval)
 
     incidence = np.maximum(-np.diff(model.traces["S"]), 0)  # daily new cases
-    result = estimate_rt(incidence, window=7, si_mean=3.0, si_sd=1.5)
+    result = estimate_rt(incidence, window=14, si_mean=5.0, si_sd=2.0)
 
-    # Early Rt should be near R0 = beta/gamma = 3, declining below 1 after
-    # the susceptible pool is depleted.
+    # Rt starts close to R0 = beta/gamma = 2 while the epidemic grows,
+    # and falls below 1 as the susceptible pool is depleted.
     result.plot()
+
+.. image:: _static/rt_sir_validation.png
+    :align: center
+    :alt: Rt estimated from a simulated SIR epidemic, declining below 1
 
 Reference:
     Cori, A. et al. (2013). A new framework and software to estimate

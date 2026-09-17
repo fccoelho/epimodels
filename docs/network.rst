@@ -35,6 +35,10 @@ SIR on a network
     model.get_quantiles(0.95)    # 95% band
     model.plot_traces("I")       # spaghetti plot + mean
 
+.. image:: _static/network_sir.png
+    :align: center
+    :alt: 20 stochastic SIR trajectories on a Barabási-Albert network
+
 SIS on a network
 ----------------
 

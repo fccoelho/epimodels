@@ -77,6 +77,13 @@ directly with a :class:`~epimodels.fitting.Dataset` and
 
     result.model.traces["I"]        # trajectory at the MAP estimate
 
+Posterior traces and marginal densities (synthetic SIR data with
+``beta = 2``, ``gamma = 0.5``):
+
+.. image:: _static/bayes_posterior.png
+    :align: center
+    :alt: MCMC traces and posterior histograms for beta and gamma
+
 Observation models
 ------------------
 

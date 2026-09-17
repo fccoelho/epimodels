@@ -23,50 +23,47 @@ model with parameters, initial conditions and interventions:
     from epimodels.interventions import Intervention, Scenario, ScenarioComparison
 
     model = SIR()
+    params = {"beta": 0.4, "gamma": 0.2}  # R0 = 2
+    common = dict(params=params, initial_conditions=[995, 5, 0],
+                  trange=[0, 120], totpop=1000)
 
-    baseline = Scenario(
-        "baseline", model,
-        params={"beta": 2.0, "gamma": 0.5},
-        initial_conditions=[999, 1, 0],
-        trange=[0, 100], totpop=1000,
-    )
+    baseline = Scenario("baseline", model, **common)
 
     lockdown = Scenario(
         "lockdown", model,
-        params={"beta": 2.0, "gamma": 0.5},
-        initial_conditions=[999, 1, 0],
-        trange=[0, 100], totpop=1000,
         interventions=[
-            # 60% contact reduction between days 10 and 40
-            Intervention("beta", start=10, end=40, factor=0.4),
+            # 60% contact reduction between days 20 and 60
+            Intervention("beta", start=20, end=60, factor=0.4),
         ],
+        **common,
     )
 
-    cmp = ScenarioComparison(baseline, [lockdown]).run()
+    vaccination = Scenario(
+        "vaccination", model,
+        interventions=[
+            # permanent 50% transmission reduction from day 20,
+            # plus a temporary recovery boost
+            Intervention("beta", start=20, factor=0.5),
+            Intervention("gamma", start=20, end=90, new_value=0.4),
+        ],
+        **common,
+    )
 
-    cmp.peak("I")          # {'baseline': ..., 'lockdown': ...}
-    cmp.final_size("R")    # attack rate per scenario
+    cmp = ScenarioComparison(baseline, [lockdown, vaccination]).run()
+
+    cmp.peak("I")          # {'baseline': 140, 'lockdown': 116, 'vaccination': 113}
+    cmp.final_size("R")    # {'baseline': 800, 'lockdown': 477, 'vaccination': 371}
     cmp.plot("I")          # trajectories of all scenarios on one axes
+
+.. image:: _static/scenarios_interventions.png
+    :align: center
+    :alt: SIR trajectories under baseline, lockdown and vaccination scenarios
 
 Interventions are evaluated *inside* the ODE right-hand side, so the
 parameter changes smoothly follow the schedule at each integration step.
 Multiple interventions can be combined per scenario, and ``new_value``
-overrides a parameter absolutely instead of scaling it:
-
-.. code-block:: python
-
-    # Vaccination: reduce beta permanently from day 30 on, and
-    # boost gamma to a fixed value during the same period
-    vaccination = Scenario(
-        "vaccination", model,
-        params={"beta": 2.0, "gamma": 0.5},
-        initial_conditions=[999, 1, 0],
-        trange=[0, 100], totpop=1000,
-        interventions=[
-            Intervention("beta", start=30, factor=0.5),   # until the end
-            Intervention("gamma", start=30, end=60, new_value=0.8),
-        ],
-    )
+overrides a parameter absolutely instead of scaling it (as the vaccination
+scenario above does for ``gamma``).
 
 Uncertainty ensembles
 ---------------------
@@ -88,16 +85,16 @@ trajectories on a common time grid:
         model,
         n_sims=200,
         param_sampler=lambda: {
-            "beta": rng.uniform(1.5, 2.5),
-            "gamma": 0.5,
+            "beta": rng.uniform(0.3, 0.6),
+            "gamma": 0.2,
         },
-        initial_conditions=[999, 1, 0],
-        trange=[0, 100],
+        initial_conditions=[995, 5, 0],
+        trange=[0, 120],
         totpop=1000,
     )
 
     len(ensemble)                 # 200 realizations
-    ensemble.traces["I"].shape    # (200, 201) — sims x time points
+    ensemble.traces["I"].shape    # (200, 121) — sims x time points
 
     q = ensemble.quantiles([0.025, 0.5, 0.975])
     q["I"][0.5]                   # median trajectory
@@ -105,6 +102,10 @@ trajectories on a common time grid:
     ensemble.summary()            # final size / peak statistics
     ensemble.plot_band("I")       # median with 95% band
     ensemble.plot_band("I", show_reps=True)  # overlay individual runs
+
+.. image:: _static/scenarios_ensemble.png
+    :align: center
+    :alt: Ensemble of SIR trajectories with median and 95% band
 
 Initial conditions can also be sampled by passing a callable, and
 ``n_jobs > 1`` parallelizes the realizations across processes.
