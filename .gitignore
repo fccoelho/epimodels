@@ -55,3 +55,6 @@ MANIFEST
 .aider*
 
 venv/
+
+# graphify index
+graphify-out/
