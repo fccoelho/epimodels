@@ -3,7 +3,7 @@
 Changelog
 =========
 
-Version 1.4.0 (unreleased)
+Version 1.4.0 (2026-09-17)
 ==========================
 
 Added
