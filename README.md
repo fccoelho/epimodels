@@ -28,8 +28,12 @@
 
 ## Features
 
-- **27 model classes** across continuous and discrete families (SIR, SIS, SIRS, SEIR, SEQIAHR, multi-strain, vector-borne, and more)
+- **27 model classes** across continuous, discrete and stochastic (CTMC) families (SIR, SIS, SIRS, SEIR, SEQIAHR, multi-strain, vector-borne, and more)
+- **Model registry** -- `get_model("SIR", family="continuous")`, string-based lookup across all families
 - **Model fitting** -- parameter estimation from observed data with 7 loss functions and 4 optimizers
+- **Bayesian inference** -- DE-MCMC posterior sampling with normal/Poisson/negative-binomial observation models
+- **Uncertainty ensembles** -- run many simulations with sampled parameters and get quantile bands
+- **Intervention scenarios** -- time-bounded parameter changes (lockdowns, vaccination) with scenario comparison
 - **Symbolic analysis** -- R0 computation, equilibrium finding, stability analysis, sensitivity analysis
 - **Multiple solvers** -- scipy (CPU) and diffrax/JAX (GPU) backends with a unified interface
 - **Phase space tools** -- time delay embedding, mutual information, phase portraits
@@ -41,10 +45,12 @@
 pip install epimodels
 ```
 
-For pandas DataFrame support:
+Optional extras:
 
 ```bash
-pip install epimodels[dataframe]
+pip install epimodels[plot]       # matplotlib plotting
+pip install epimodels[dataframe]  # pandas DataFrame support
+pip install epimodels[jax]        # diffrax/JAX GPU solvers
 ```
 
 ## Getting Started
@@ -223,6 +229,79 @@ The `epimodels.fitting` module provides parameter estimation from observed epide
 ## Related Libraries
 
 For stochastic epidemic models check [EpiStochModels](https://github.com/fccoelho/EpiStochModels).
+
+### Model Registry
+
+Look up models by name across the continuous, discrete and stochastic families:
+
+```python
+from epimodels import get_model, list_models
+
+SIR = get_model("SIR", family="continuous")
+model = SIR()
+print(list_models())
+```
+
+Custom models can be registered with the `@register_model` decorator from `epimodels.registry`.
+
+### Intervention Scenarios
+
+```python
+from epimodels.continuous import SIR
+from epimodels.interventions import Intervention, Scenario, ScenarioComparison
+
+model = SIR()
+base = Scenario("baseline", model, params={"beta": 2.0, "gamma": 0.5},
+                initial_conditions=[999, 1, 0], trange=[0, 100], totpop=1000)
+lockdown = Scenario("lockdown", model, params={"beta": 2.0, "gamma": 0.5},
+                    initial_conditions=[999, 1, 0], trange=[0, 100], totpop=1000,
+                    interventions=[Intervention("beta", start=10, end=40, factor=0.4)])
+
+cmp = ScenarioComparison(base, [lockdown]).run()
+print(cmp.peak("I"))
+cmp.plot("I")
+```
+
+### Uncertainty Ensembles
+
+```python
+from epimodels.continuous import SIR
+from epimodels.ensembles import simulate_ensemble
+
+model = SIR()
+rng = np.random.default_rng(0)
+ensemble = simulate_ensemble(
+    model, n_sims=200,
+    param_sampler=lambda: {"beta": rng.uniform(1.5, 2.5), "gamma": 0.5},
+    initial_conditions=[999, 1, 0], trange=[0, 100], totpop=1000,
+)
+ensemble.quantiles([0.025, 0.5, 0.975])
+ensemble.plot_band("I")
+```
+
+### Bayesian Inference
+
+```python
+from epimodels.continuous import SIR
+from epimodels.fitting import Dataset, ParameterSpec
+from epimodels.fitting.bayes import fit_model_bayesian
+
+model = SIR()
+dataset = Dataset(model).register(
+    name="cases", values=observed_I, times=times, state_variable="I",
+)
+result = fit_model_bayesian(
+    model, dataset,
+    parameters_to_fit=[
+        ParameterSpec("beta", bounds=(0.1, 5.0)),
+        ParameterSpec("gamma", bounds=(0.01, 1.0)),
+    ],
+    total_population=10000,
+    likelihood="poisson",
+)
+print(result.summary())
+print(result.map_estimate())
+```
 
 ## Documentation
 

@@ -3,6 +3,67 @@
 Changelog
 =========
 
+Version 1.4.0 (unreleased)
+==========================
+
+Added
+-----
+
+* **Model registry** -- ``epimodels.get_model(name, family=...)`` and
+  ``list_models()`` for string-based lookup across continuous/discrete/stochastic
+  families, with a ``@register_model`` decorator for custom models
+* **Intervention scenarios** -- ``epimodels.interventions`` with ``Intervention``,
+  ``Scenario`` and ``ScenarioComparison`` for time-bounded parameter changes
+  (e.g. lockdowns) with comparison plots and final-size/peak metrics
+* **Uncertainty ensembles** -- ``epimodels.ensembles.simulate_ensemble`` runs many
+  simulations with sampled parameters/initial conditions; ``TraceEnsemble`` provides
+  quantiles, summaries and uncertainty-band plots
+* **Bayesian inference** -- ``epimodels.fitting.bayes.fit_model_bayesian`` implements
+  DE-MCMC posterior sampling (normal/Poisson/negative-binomial observation models),
+  with MAP estimates, credible intervals, trace plots and optional ArviZ export
+* ``BetaGammaR0Mixin``/``BetaRR0Mixin`` shared R0 properties (replacing 14 duplicated
+  implementations)
+* ``ModelFitter(raise_on_error=True)`` option to surface model-evaluation failures
+
+Fixed
+-----
+
+* Discrete SIS no longer expects 3 initial conditions for a 2-compartment model
+* Discrete SIRS ``R0`` read a nonexistent parameter and always returned ``None``
+* ``Influenza`` result key typo (``Igl`` -> ``Ig1``) and missing ``run`` alias
+* SEQIAHR (continuous and discrete) unpacked parameters by dict order, silently
+  breaking with differently-ordered dicts
+* ``SIRSEI.R0``/``R0_t`` accessed unchecked parameters, raising ``KeyError``
+  instead of returning ``None``
+* ``ContinuousModel.run`` mutated the caller's parameter dict
+* ``BaseModel.copy()`` was shallow: copies shared parameter dicts, specs and formulas
+* CTMC parallel replicates (``n_jobs > 1``) failed because a closure cannot be pickled
+* ``DiffraxSolver`` ignored ``t_eval`` (hardcoded 100-point output grid) and
+  converted state to a Python list on every RHS evaluation
+* ``JAXOptimizer`` produced constant gradients under autodiff (``float()`` truncation)
+  and misused the optimistix API; rewritten as projected gradient descent with
+  finite-difference gradients (no external dependency)
+* Importing the package no longer writes ``epimodels.log`` to the working directory
+  (import-time ``logging.basicConfig`` removed) or require matplotlib
+* Legacy ``gillespie.py``: undeclared ``tqdm`` import removed, no-op "validation"
+  loops actually convert/clip values now, bounded worker pool
+* Malformed LaTeX in parameter tables and symbols (``\begin[l|c|c]``, unclosed ``$``)
+* ``SymbolicModel`` silent ``except: pass/None`` failures now logged;
+  unreachable dead code removed
+* ``SEQIAHR`` and ``SIRSEI`` are now symbolically extractable (numpy function calls
+  in ``_model`` are mapped to SymPy during extraction)
+
+Changed
+-------
+
+* Packaging: ``matplotlib``/``pandas``/``jax``/``diffrax``/``ipykernel`` are no longer
+  hard dependencies -- use extras ``[plot]``, ``[dataframe]``, ``[jax]``;
+  ``scipy-stubs`` moved to dev; added ``[build-system]``, license expression,
+  fixed classifiers; removed stale ``src/`` layout and ``requirements.txt``
+* Performance: ``SymbolicModel`` caches symbolic R0/Jacobian; vectorized CTMC grid
+  interpolation, ``phase.py`` mutual information and Cao E-statistic
+* CTMC solvers share a template-method trajectory loop
+
 Version 1.3.0 (2026-06-14)
 ==========================
 
