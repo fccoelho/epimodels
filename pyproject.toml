@@ -29,6 +29,8 @@ dependencies = [
 plot = ["matplotlib>=3.10.0"]
 dataframe = ["pandas>=2.0.0"]
 jax = ["jax>=0.9.1", "diffrax>=0.7.2"]
+network = ["networkx>=3.0"]
+yaml = ["pyyaml>=6.0"]
 dev = [
     "cython>=3.0.11",
     "marimo>=0.13.10",

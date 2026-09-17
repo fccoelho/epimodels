@@ -454,6 +454,134 @@ class BaseModel:
         self.traces = {}
         self.param_values = {}
 
+    def simulate(
+        self,
+        inits: list[float],
+        trange: list[float],
+        totpop: float,
+        params: dict[str, Any],
+        **kwargs,
+    ) -> "BaseModel":
+        """
+        Run the model and return it, for chaining.
+
+        Convenience wrapper around :meth:`__call__`:
+
+        >>> model.simulate([1000, 1, 0], [0, 100], 1001,
+        ...                {"beta": 2, "gamma": 0.1}).plot_traces()
+
+        :param kwargs: Forwarded to the model call (e.g. ``t_eval``, ``solver``).
+        :return: self, with ``traces`` populated.
+        """
+        self(inits, trange, totpop, params, **kwargs)
+        return self
+
+    def fit(
+        self,
+        data: Any,
+        params_to_fit: Any = None,
+        *,
+        times: Any = None,
+        total_population: float | None = None,
+        method: str = "mle",
+        variable_mapping: dict[str, str] | None = None,
+        likelihood: str = "normal",
+        sigma: float | dict[str, float] = 1.0,
+        **kwargs,
+    ) -> Any:
+        """
+        Fit this model to observed data.
+
+        Dispatches to :func:`epimodels.fitting.fit_model` (``method="mle"``)
+        or :func:`epimodels.fitting.bayes.fit_model_bayesian`
+        (``method="bayes"``).
+
+        :param data: For MLE: dict mapping series names to observed values
+            (plus ``times``), or a DataFrame (see ``fit_model``). For Bayes:
+            the same dict+times combination, or a prepared
+            :class:`~epimodels.fitting.Dataset` (in which case
+            ``params_to_fit`` must be a list of
+            :class:`~epimodels.fitting.ParameterSpec`).
+        :param params_to_fit: For MLE: dict mapping parameter names to
+            ``(lower, upper)`` bounds. For Bayes with raw dict data: same.
+        :param times: Observation times (required when ``data`` is a dict).
+        :param total_population: Total population size.
+        :param method: ``"mle"`` (default) or ``"bayes"``.
+        :param variable_mapping: Optional mapping from series names to state
+            variable names (MLE path).
+        :param likelihood: Observation model for Bayes
+            ("normal", "poisson", "negative_binomial").
+        :param sigma: Noise level for the Bayes observation model.
+        :param kwargs: Forwarded to the underlying fitting function.
+
+        :return: FittingResult (MLE) or BayesianFitResult (Bayes).
+
+        Example:
+            >>> result = model.fit(
+            ...     {"I": observed_I}, times=t,
+            ...     params_to_fit={"beta": (0.1, 5.0), "gamma": (0.01, 1.0)},
+            ...     total_population=10000,
+            ... )
+            >>> result.best_params
+        """
+        from epimodels.fitting import Dataset, ParameterSpec, fit_model
+        from epimodels.fitting.bayes import fit_model_bayesian
+
+        if method not in ("mle", "bayes"):
+            raise ValueError(f"Unknown method '{method}'. Use 'mle' or 'bayes'.")
+        if total_population is None:
+            raise ValueError("total_population is required")
+
+        if method == "mle":
+            return fit_model(
+                self,
+                data,
+                times,
+                params_to_fit,
+                total_population,
+                variable_mapping=variable_mapping,
+                **kwargs,
+            )
+
+        # Bayesian path
+        if isinstance(data, Dataset):
+            dataset = data
+            if not isinstance(params_to_fit, list) or not all(
+                isinstance(p, ParameterSpec) for p in params_to_fit
+            ):
+                raise ValueError(
+                    "When data is a Dataset, params_to_fit must be a list of "
+                    "ParameterSpec objects"
+                )
+            specs = params_to_fit
+        else:
+            if times is None:
+                raise ValueError("times is required when data is a dict")
+            dataset = Dataset(self)
+            for series_name, values in data.items():
+                var = (variable_mapping or {}).get(series_name, series_name)
+                dataset.register(
+                    name=series_name,
+                    values=values,
+                    times=times,
+                    state_variable=var,
+                )
+            if not isinstance(params_to_fit, dict):
+                raise ValueError(
+                    "params_to_fit must map parameter names to (lower, upper) bounds"
+                )
+            specs = [ParameterSpec(name, bounds=bounds) for name, bounds in params_to_fit.items()]
+
+        return fit_model_bayesian(
+            self,
+            dataset,
+            specs,
+            total_population,
+            likelihood=likelihood,
+            sigma=sigma,
+            **kwargs,
+        )
+
 
 def get_model(name: str, family: str = "any") -> type:
     """

@@ -39,15 +39,16 @@ __all__ = [
 ]
 
 # Lookup precedence when family="any" and the name exists in several families.
-FAMILY_PRECEDENCE = ("continuous", "discrete", "stochastic", "custom")
+FAMILY_PRECEDENCE = ("continuous", "discrete", "stochastic", "network", "custom")
 
 # Base classes that should not be registered as models themselves.
-_BASE_CLASS_NAMES = {"BaseModel", "ContinuousModel", "DiscreteModel", "CTMCModel"}
+_BASE_CLASS_NAMES = {"BaseModel", "ContinuousModel", "DiscreteModel", "CTMCModel", "NetworkModel"}
 
 _BUILTIN_MODULES: dict[str, list[str]] = {
     "continuous": ["epimodels.continuous.models"],
     "discrete": ["epimodels.discrete.models"],
     "stochastic": ["epimodels.stochastic.CTMC.models"],
+    "network": ["epimodels.network"],
 }
 
 _REGISTRY: dict[str, dict[str, type[BaseModel]]] = {}
@@ -115,7 +116,7 @@ def unregister_model(name: str, family: str) -> None:
     _REGISTRY.get(family, {}).pop(name, None)
 
 
-def get_model(name: str, family: str = "any") -> type["BaseModel"]:
+def get_model(name: str, family: str = "any") -> type[BaseModel]:
     """
     Look up a model class by name.
 

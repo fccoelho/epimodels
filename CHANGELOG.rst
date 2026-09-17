@@ -21,6 +21,21 @@ Added
 * **Bayesian inference** -- ``epimodels.fitting.bayes.fit_model_bayesian`` implements
   DE-MCMC posterior sampling (normal/Poisson/negative-binomial observation models),
   with MAP estimates, credible intervals, trace plots and optional ArviZ export
+* **Rt estimation** -- ``epimodels.rt.estimate_rt`` implements the Cori et al. (2013)
+  sliding-window reproduction-number estimator (EpiEstim method) with gamma
+  serial interval, gamma prior/posterior and credible bands
+* **SDE layer** -- ``epimodels.sde.SDEModel`` wraps any continuous model as a
+  Langevin SDE with demographic square-root noise (or a custom diffusion),
+  integrated with diffrax/JAX; multi-replicate support with means/quantiles
+* **Network models** -- ``epimodels.network.NetworkSIR``/``NetworkSIS``: event-driven
+  epidemics on networkx graphs, adjacency dicts or matrices, with replicates,
+  final-size, means/quantiles and band plots (``[network]`` extra)
+* **Model serialization** -- ``epimodels.io.save_model``/``load_model`` store model
+  specs (optionally with traces) as JSON or YAML; reconstruction goes through the
+  registry with module-path fallback for custom models
+* **Sugar API** -- ``model.simulate(...)`` returns the model for chaining and
+  ``model.fit(data, params_to_fit, ..., method="mle"|"bayes")`` dispatches into
+  the fitting/bayesian machinery from any model instance
 * ``BetaGammaR0Mixin``/``BetaRR0Mixin`` shared R0 properties (replacing 14 duplicated
   implementations)
 * ``ModelFitter(raise_on_error=True)`` option to surface model-evaluation failures
