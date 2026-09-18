@@ -51,6 +51,9 @@ MANIFEST
 # pycharm
 .idea
 
+# vscode
+.vscode/
+
 .opencode
 .aider*
 
