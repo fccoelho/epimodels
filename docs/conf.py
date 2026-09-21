@@ -148,6 +148,26 @@ nbsphinx_execute = "never"
 # Allow errors in notebooks (for documentation purposes)
 nbsphinx_allow_errors = True
 
+# -- MathJax configuration ---------------------------------------------------
+
+# sphinx.ext.mathjax is enabled above. This config makes MathJax process raw
+# $...$ / $$...$$ (and \(...\) / \[...\]) delimiters found in plain text, in
+# addition to the :math: role and .. math:: directive, which Sphinx converts
+# itself. nbsphinx adds the ignoreHtmlClass/processHtmlClass defaults on top
+# of this at build time.
+#
+# Note: in .rst files the backslash is reStructuredText's escape character,
+# so raw $...$ only works for backslash-free math ($2 + 2$); LaTeX commands
+# need the :math: role (or a doubled backslash). In notebook markdown cells
+# raw $...$ with LaTeX commands works as usual.
+mathjax3_config = {
+    "tex": {
+        "inlineMath": [["$", "$"], ["\\(", "\\)"]],
+        "displayMath": [["$$", "$$"], ["\\[", "\\]"]],
+        "processEscapes": True,
+    },
+}
+
 
 # -- Options for HTML output -------------------------------------------------
 

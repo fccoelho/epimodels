@@ -67,6 +67,7 @@ Contents
 
    geting_started
    models
+   custom_models
    solvers
    validation_system
    fitting
