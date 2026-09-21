@@ -7,9 +7,12 @@ methods are useful for understanding the underlying attractor structure of
 disease dynamics, detecting chaos, and reconstructing system behavior from
 partial observations.
 
-Reconstruction is based on **Takens' embedding theorem**, which states that
-a scalar time series carries sufficient information to reconstruct the
-full phase space of a deterministic dynamical system.
+Reconstruction is based on **Takens' embedding theorem** (Takens, 1981),
+which states that a scalar time series carries sufficient information to
+reconstruct the full phase space of a deterministic dynamical system
+(see also `Takens' theorem (Wikipedia)
+<https://en.wikipedia.org/wiki/Takens%27s_theorem>`_ and Kantz &
+Schreiber (2004) for a comprehensive treatment).
 
 .. contents::
    :local:
@@ -61,7 +64,7 @@ Mutual Information
 The :meth:`~epimodels.tools.phase.TimeDelayEmbedding.mutual_information`
 method calculates average mutual information for different time delays.
 The **first local minimum** of the mutual information function is a good
-choice for the embedding delay *tau*.
+choice for the embedding delay *tau*, following Fraser and Swinney (1986).
 
 .. code-block:: python
 
@@ -75,7 +78,8 @@ Cao's Method
 ~~~~~~~~~~~~
 
 :meth:`~epimodels.tools.phase.TimeDelayEmbedding.cao_embedding_dimension`
-estimates the minimum embedding dimension using the E1 statistic. When
+estimates the minimum embedding dimension using the E1 statistic
+(Cao, 1997). When
 E1 saturates (stops increasing beyond a threshold), the corresponding
 dimension is sufficient.
 
@@ -141,3 +145,20 @@ API Reference
 .. autofunction:: epimodels.tools.phase.phase_portrait
 
 .. autofunction:: epimodels.tools.phase.find_optimal_embedding
+
+References
+----------
+
+* Takens, F. (1981). Detecting strange attractors in turbulence.
+  In *Dynamical Systems and Turbulence*, Lecture Notes in Mathematics 898,
+  pp. 366–381. Springer.
+  doi:`10.1007/BFb0091924 <https://doi.org/10.1007/BFb0091924>`_
+* Fraser, A. M., & Swinney, H. L. (1986). Independent coordinates for
+  strange attractors from mutual information. *Physical Review A*, 33(2),
+  1134–1140. doi:`10.1103/PhysRevA.33.1134 <https://doi.org/10.1103/PhysRevA.33.1134>`_
+* Cao, L. (1997). Practical method for determining the minimum embedding
+  dimension of a scalar time series. *Physica D: Nonlinear Phenomena*,
+  110(1–2), 43–50.
+  doi:`10.1016/S0167-2789(97)00118-8 <https://doi.org/10.1016/S0167-2789(97)00118-8>`_
+* Kantz, H., & Schreiber, T. (2004). *Nonlinear Time Series Analysis*
+  (2nd ed.). Cambridge University Press.

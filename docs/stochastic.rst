@@ -3,9 +3,14 @@ Stochastic CTMC Models
 
 Epimodels provides stochastic epidemic models based on **Continuous-Time
 Markov Chains** (CTMCs), solved using the **Gillespie Stochastic Simulation
-Algorithm** (SSA). These models are the stochastic counterparts of the
-deterministic ODE models and are especially useful when population sizes
-are small or when extinction risk analysis is required.
+Algorithm** (SSA) (Gillespie, 1976; 1977). These models are the stochastic
+counterparts of the deterministic ODE models and are especially useful when
+population sizes are small or when extinction risk analysis is required.
+For an overview of stochastic epidemic model formulations, see Allen (2017)
+and Andersson & Britton (2000); see also `Gillespie algorithm (Wikipedia)
+<https://en.wikipedia.org/wiki/Gillespie_algorithm>`_ and
+`Continuous-time Markov chain (Wikipedia)
+<https://en.wikipedia.org/wiki/Markov_chain#Continuous-time>`_.
 
 .. contents::
    :local:
@@ -149,8 +154,8 @@ The Gillespie Solver
 --------------------
 
 :class:`~epimodels.stochastic.CTMC.solvers.GillespieSolver` implements
-the **Gillespie Direct Method** for exact stochastic simulation. At each
-step:
+the **Gillespie Direct Method** (Gillespie, 1977) for exact stochastic
+simulation. At each step:
 
 1. Compute propensities for all transition events
 2. Draw time to next event from an exponential distribution
@@ -215,3 +220,24 @@ Solvers
 .. autoclass:: epimodels.stochastic.CTMC.solvers.CTMCTrajectory
    :members:
    :undoc-members:
+
+References
+----------
+
+* Gillespie, D. T. (1976). A general method for numerically simulating the
+  stochastic time evolution of coupled chemical reactions.
+  *Journal of Computational Physics*, 22(4), 403–434.
+  doi:`10.1016/0021-9991(76)90041-3 <https://doi.org/10.1016/0021-9991(76)90041-3>`_
+* Gillespie, D. T. (1977). Exact stochastic simulation of coupled chemical
+  reactions. *The Journal of Physical Chemistry*, 81(25), 2340–2361.
+  doi:`10.1021/j100540a008 <https://doi.org/10.1021/j100540a008>`_
+* Allen, L. J. S. (2017). A primer on stochastic epidemic models:
+  formulation, numerical simulation, and analysis.
+  *Infectious Disease Modelling*, 2(2), 128–142.
+  doi:`10.1016/j.idm.2017.03.001 <https://doi.org/10.1016/j.idm.2017.03.001>`_
+* Andersson, H., & Britton, T. (2000). *Stochastic Epidemic Models and
+  Their Statistical Analysis.* Springer.
+* Kurtz, T. G. (1970; 1971). Limit theorems for jump Markov processes
+  approximating ordinary differential processes — the theoretical basis for
+  the convergence of CTMC trajectories to the ODE solution as population
+  size grows. See Allen (2017) for an accessible summary.

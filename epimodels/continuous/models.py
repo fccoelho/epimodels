@@ -518,6 +518,19 @@ I -->|$$\gamma$$| R(Removed)
 
 
 class SEQIAHR(ContinuousModel):
+    """
+    SEQIAHR COVID-19 model (Susceptible-Exposed-Infectious-Asymptomatic-
+    Hospitalized-Removed, plus cumulative hospitalizations C and deaths D).
+
+    Follows the SEQIAHR class of COVID-19 compartmental models; see
+    Nana-Kyere et al. (2022), Comput. Math. Methods Med. 2022, 9491847.
+    https://doi.org/10.1155/2022/9491847
+
+    Quarantine is modeled as a time-dependent reduction chi(t) of the
+    force of infection, switched on at day q and off after r days through
+    a smooth tanh transition.
+    """
+
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict(
@@ -585,6 +598,12 @@ H -->|$$\mu$$| D(Deaths)
 class Dengue4Strain(ContinuousModel):
     """
     Dengue 4 strain model
+
+    Sequential infection by the four dengue serotypes with temporary
+    cross-immunity, following the multi-serotype dengue modelling
+    framework of Bartley, Donnelly & Garnett (2002),
+    Trans. R. Soc. Trop. Med. Hyg. 96(4), 387-397.
+    https://doi.org/10.1016/S0035-9203(02)90371-8
     """
 
     def __init__(self):
@@ -1248,6 +1267,11 @@ class SIRSEI(ContinuousModel):
     'Modelling Climate Change and on Malaria Transmission (Parham and Michael, 2010)'
     and inspired by the Trajetórias Project developed by SinBiose/CNPq.
 
+    Reference:
+        Parham, P. E., & Michael, E. (2010). Modeling the effects of weather
+        and climate change on malaria transmission. Environmental Health
+        Perspectives 118(5), 620-626. https://doi.org/10.1289/ehp.0901256
+
     Further development will be done to include the effects of deforestation
     and forest fires on mosquito habitat and transmission dynamics.
 
@@ -1804,7 +1828,11 @@ class SEIRS_SEI(ContinuousModel):
         - tau_M: Sporogonic cycle duration (mosquito exposed -> infectious): b3_M
 
     Reference:
-        Inspired by Parham & Michael (2010) and Amazon malaria studies.
+        Parham, P. E., & Michael, E. (2010). Modeling the effects of weather
+        and climate change on malaria transmission. Environmental Health
+        Perspectives 118(5), 620-626. https://doi.org/10.1289/ehp.0901256
+        (see also Parham & Michael 2010, Adv. Exp. Med. Biol. 673, 184-199).
+        Inspired by Amazon malaria studies.
 
     Example:
         >>> model = SEIRS_SEI()
@@ -2303,7 +2331,9 @@ class SIR2Strain(ContinuousModel):
     SIR (Susceptible-Infectious-Removed) Model with two strains.
 
     A compartmental model for infectious disease dynamics with two strains.
-    Adapted from: https://doi.org/10.1016/j.jtbi.2011.08.043
+    Adapted from Aguiar, M., Ballesteros, S., Kooi, B. W., & Stollenwerk,
+    N. (2011), Journal of Theoretical Biology 289, 181-196.
+    https://doi.org/10.1016/j.jtbi.2011.08.043
 
     State Variables:
         - S: Susceptible individuals
@@ -2550,7 +2580,10 @@ class SIRSNonAutonomous(ContinuousModel):
 
 class NeipelHeterogeneousSIR(ContinuousModel):
     """
-    Heterogeneous SIR model based on Neipel et al. (2020).
+    Heterogeneous SIR model based on Neipel, J., Bauermann, J., Bo, S.,
+    Harmon, T., & Jülicher, F. (2020), "Power-law population heterogeneity
+    governs epidemic waves", PLoS ONE 15(10): e0239678.
+    https://doi.org/10.1371/journal.pone.0239678
 
     State Variables:
         - I: Infectious individuals
@@ -2636,6 +2669,15 @@ class EbolaSEIHFRV(ContinuousModel):
 
     Based on the EpidBot Analysis Report for the Democratic Republic of Congo
     (Coelho, 2026; doi:10.5281/zenodo.20634292).
+
+    The transmission structure (community, hospital and funeral pathways)
+    follows the SEIHFR model of Legrand, J., Grais, R. F., Boelle, P. Y.,
+    Valleron, A. J., & Flahault, A. (2007), "Understanding the dynamics of
+    Ebola epidemics", Epidemiology & Infection 135(4), 610-621.
+    https://doi.org/10.1017/S0950268806007217
+    The ring-vaccination component (rVSV-ZEBOV) follows Henao-Restrepo,
+    A. M., et al. (2017), The Lancet 389(10068), 505-518.
+    https://doi.org/10.1016/S0140-6736(16)32621-6
 
     State Variables:
         - S: Susceptible individuals

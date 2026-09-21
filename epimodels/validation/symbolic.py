@@ -182,6 +182,17 @@ class SymbolicModel:
         """
         Compute basic reproduction number R0 using next-generation matrix method.
 
+        References:
+            Diekmann, O., Heesterbeek, J. A. P., & Metz, J. A. J. (1990).
+            On the definition and the computation of the basic reproduction
+            ratio R0 in the description of infectious disease in
+            heterogeneous populations. Journal of Mathematical Biology, 28(4),
+            365-382. https://doi.org/10.1007/BF00178324
+            van den Driessche, P., & Watmough, J. (2002). Reproduction
+            numbers and sub-threshold endemic equilibria for compartmental
+            models of disease transmission. Mathematical Biosciences,
+            180(1-2), 29-48. https://doi.org/10.1016/S0025-5564(02)00108-6
+
         This method:
         1. Identifies infected compartments
         2. Computes new infections matrix F and transitions matrix V
@@ -1465,6 +1476,11 @@ class SymbolicModel:
 
         S_ij = ∂y_i/∂p_j where y is equilibrium value and p is parameter.
         Uses numerical perturbation when symbolic computation is not feasible.
+
+        For normalized sensitivity/elasticity indices of R0 in epidemic
+        models, see Chitnis, N., Hyman, J. M., & Cushing, J. M. (2008),
+        Bulletin of Mathematical Biology 70(5), 1272-1296.
+        https://doi.org/10.1007/s11538-008-9299-0
 
         Args:
             params: Parameter values dict (required for numeric computation)

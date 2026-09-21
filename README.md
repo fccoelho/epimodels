@@ -228,6 +228,25 @@ For stochastic epidemic models check [EpiStochModels](https://github.com/fccoelh
 
 Full documentation is available at [epimodels.readthedocs.io](https://epimodels.readthedocs.io).
 
+## Key Methodological References
+
+The models and algorithms implemented in this library are described in the
+following works (full bibliography in the [docs/references.rst](docs/references.rst)
+documentation page):
+
+- **SIR / SIS / SEIR / SIRS models** — Kermack & McKendrick (1927), [doi:10.1098/rspa.1927.0118](https://doi.org/10.1098/rspa.1927.0118); Anderson & May (1991), *Infectious Diseases of Humans* (Oxford University Press); [Compartmental models in epidemiology (Wikipedia)](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology)
+- **Discrete-time models** — Finkenstädt & Grenfell (2000), [doi:10.1111/1467-9876.00187](https://doi.org/10.1111/1467-9876.00187)
+- **Multi-strain dengue models** (`Dengue4Strain`, `SIR2Strain`) — Bartley, Donnelly & Garnett (2002), [doi:10.1016/S0035-9203(02)90371-8](https://doi.org/10.1016/S0035-9203(02)90371-8); Aguiar et al. (2011), [doi:10.1016/j.jtbi.2011.08.043](https://doi.org/10.1016/j.jtbi.2011.08.043)
+- **Climate-forced vector-borne models** (`SIRSEI`, `SEIRS_SEI`) — Parham & Michael (2010), [doi:10.1289/ehp.0901256](https://doi.org/10.1289/ehp.0901256)
+- **SEQIAHR COVID-19 model** — Nana-Kyere et al. (2022), [doi:10.1155/2022/9491847](https://doi.org/10.1155/2022/9491847)
+- **Heterogeneous susceptibility SIR** (`NeipelHeterogeneousSIR`) — Neipel et al. (2020), [doi:10.1371/journal.pone.0239678](https://doi.org/10.1371/journal.pone.0239678)
+- **Ebola model with ring vaccination** (`EbolaSEIHFRV`) — Legrand et al. (2007), [doi:10.1017/S0950268806007217](https://doi.org/10.1017/S0950268806007217); Henao-Restrepo et al. (2017), [doi:10.1016/S0140-6736(16)32621-6](https://doi.org/10.1016/S0140-6736(16)32621-6)
+- **Stochastic CTMC models / Gillespie SSA** — Gillespie (1976), [doi:10.1016/0021-9991(76)90041-3](https://doi.org/10.1016/0021-9991(76)90041-3); Gillespie (1977), [doi:10.1021/j100540a008](https://doi.org/10.1021/j100540a008); Allen (2017), [doi:10.1016/j.idm.2017.03.001](https://doi.org/10.1016/j.idm.2017.03.001)
+- **R0 (next-generation matrix) and sensitivity analysis** — Diekmann, Heesterbeek & Metz (1990), [doi:10.1007/BF00178324](https://doi.org/10.1007/BF00178324); van den Driessche & Watmough (2002), [doi:10.1016/S0025-5564(02)00108-6](https://doi.org/10.1016/S0025-5564(02)00108-6); Chitnis et al. (2008), [doi:10.1007/s11538-008-9299-0](https://doi.org/10.1007/s11538-008-9299-0)
+- **Parameter fitting** — King et al. (2015), [doi:10.1098/rspb.2015.0347](https://doi.org/10.1098/rspb.2015.0347); Huber (1964), [doi:10.1214/aoms/1177703732](https://doi.org/10.1214/aoms/1177703732); Byrd et al. (1995) (L-BFGS-B), [doi:10.1137/0916069](https://doi.org/10.1137/0916069); Kingma & Ba (2015) (Adam); Raue et al. (2009) (profile likelihood), [doi:10.1093/bioinformatics/btp358](https://doi.org/10.1093/bioinformatics/btp358)
+- **Phase space analysis** — Takens (1981), [doi:10.1007/BFb0091924](https://doi.org/10.1007/BFb0091924); Fraser & Swinney (1986), [doi:10.1103/PhysRevA.33.1134](https://doi.org/10.1103/PhysRevA.33.1134); Cao (1997), [doi:10.1016/S0167-2789(97)00118-8](https://doi.org/10.1016/S0167-2789(97)00118-8)
+- **ODE solvers** — Dormand & Prince (1980) (RK45), [doi:10.1016/0771-050X(80)90013-3](https://doi.org/10.1016/0771-050X(80)90013-3); Tsitouras (2011) (Tsit5), [doi:10.1016/j.apnum.2010.09.005](https://doi.org/10.1016/j.apnum.2010.09.005); Hairer, Nørsett & Wanner (1993, 1996); Petzold (1983) (LSODA), [doi:10.1137/0904010](https://doi.org/10.1137/0904010)
+
 ## License
 
 MIT License - see [LICENSE.txt](LICENSE.txt) for details.

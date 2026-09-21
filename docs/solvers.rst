@@ -18,12 +18,12 @@ Wrapper around ``scipy.integrate.solve_ivp`` with access to all scipy integratio
 
 **Methods:**
 
-- ``RK45`` (default): Explicit Runge-Kutta of order 5(4)
+- ``RK45`` (default): Explicit Runge-Kutta of order 5(4) (Dormand & Prince, 1980)
 - ``RK23``: Explicit Runge-Kutta of order 3(2)
-- ``DOP853``: Explicit Runge-Kutta of order 8
-- ``Radau``: Implicit Runge-Kutta of the Radau IIA family
-- ``BDF``: Implicit multi-step variable-order method
-- ``LSODA``: Adams/BDF method with automatic stiffness detection
+- ``DOP853``: Explicit Runge-Kutta of order 8 (Hairer, Nørsett & Wanner, 1993)
+- ``Radau``: Implicit Runge-Kutta of the Radau IIA family (Hairer & Wanner, 1996)
+- ``BDF``: Implicit multi-step variable-order method (Hairer & Wanner, 1996)
+- ``LSODA``: Adams/BDF method with automatic stiffness detection (Petzold, 1983)
 
 **Example:**
 
@@ -47,13 +47,17 @@ JAX-accelerated solver with GPU support. Requires ``diffrax`` and ``jax`` to be 
 
 **Solvers:**
 
-- ``Tsit5`` (default): 5th order Tsitouras method
-- ``Dopri5``: 5th order Dormand-Prince method
-- ``Dopri8``: 8th order Dormand-Prince method
+- ``Tsit5`` (default): 5th order Tsitouras method (Tsitouras, 2011)
+- ``Dopri5``: 5th order Dormand-Prince method (Dormand & Prince, 1980)
+- ``Dopri8``: 8th order Dormand-Prince method (Hairer, Nørsett & Wanner, 1993)
 - ``Euler``: Euler method
 - ``Heun``: Heun's method
 - ``Midpoint``: Midpoint method
 - ``Ralston``: Ralston's method
+
+See `Runge–Kutta methods (Wikipedia)
+<https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods>`_ and Hairer,
+Nørsett & Wanner (1993) for background on these method families.
 
 **Example:**
 
@@ -110,7 +114,7 @@ Benchmarks run on SIR model with N=1,000,000, t=[0,365], β=0.4, γ=0.1:
 | BDF      | 31.5       | Good      | Excellent      | Implicit multi-step                    |
 +----------+------------+-----------+----------------+----------------------------------------+
 
-*Accuracy measured as deviation from DOP853 reference solution.
+\*Accuracy measured as deviation from DOP853 reference solution.
 
 Diffrax Methods (JAX)
 ~~~~~~~~~~~~~~~~~~~~~
@@ -125,7 +129,7 @@ Diffrax Methods (JAX)
 | Dopri8    | Slower      | 5-20x faster | High accuracy                          |
 +-----------+-------------+--------------+----------------------------------------+
 
-*GPU speedup observed on batch simulations (100+ concurrent models)
+\*GPU speedup observed on batch simulations (100+ concurrent models)
 
 
 When to Use Each Solver
@@ -158,7 +162,8 @@ Markov Chain models using the Gillespie algorithm and related methods.
 GillespieSolver
 ~~~~~~~~~~~~~~~
 
-Exact stochastic simulation using the Gillespie Direct Method (SSA). Each step:
+Exact stochastic simulation using the Gillespie Direct Method (SSA)
+(Gillespie, 1976; 1977). Each step:
 
 1. Compute propensities for all events
 2. Draw time to next event from an exponential distribution
@@ -227,3 +232,28 @@ CTMC Solver API Reference
 
 .. autoclass:: epimodels.stochastic.CTMC.solvers.CTMCTrajectory
    :members:
+
+References
+----------
+
+* Dormand, J. R., & Prince, P. J. (1980). A family of embedded Runge–Kutta
+  formulae. *Journal of Computational and Applied Mathematics*, 6(1), 19–26.
+  doi:`10.1016/0771-050X(80)90013-3 <https://doi.org/10.1016/0771-050X(80)90013-3>`_
+* Tsitouras, C. (2011). Optimized Runge–Kutta methods for the solution of
+  the orbital problem. *Applied Numerical Mathematics*, 61(2), 158–169.
+  doi:`10.1016/j.apnum.2010.09.005 <https://doi.org/10.1016/j.apnum.2010.09.005>`_
+* Hairer, E., Nørsett, S. P., & Wanner, G. (1993). *Solving Ordinary
+  Differential Equations I: Nonstiff Problems* (2nd ed.). Springer.
+* Hairer, E., & Wanner, G. (1996). *Solving Ordinary Differential Equations
+  II: Stiff and Differential-Algebraic Problems* (2nd ed.). Springer.
+* Petzold, L. (1983). Automatic selection of methods for solving stiff and
+  nonstiff systems of ordinary differential equations. *SIAM Journal on
+  Scientific and Statistical Computing*, 4(1), 136–159.
+  doi:`10.1137/0904010 <https://doi.org/10.1137/0904010>`_
+* Gillespie, D. T. (1976). A general method for numerically simulating the
+  stochastic time evolution of coupled chemical reactions.
+  *Journal of Computational Physics*, 22(4), 403–434.
+  doi:`10.1016/0021-9991(76)90041-3 <https://doi.org/10.1016/0021-9991(76)90041-3>`_
+* Gillespie, D. T. (1977). Exact stochastic simulation of coupled chemical
+  reactions. *The Journal of Physical Chemistry*, 81(25), 2340–2361.
+  doi:`10.1021/j100540a008 <https://doi.org/10.1021/j100540a008>`_

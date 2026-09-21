@@ -73,6 +73,14 @@ class DiscreteModel(BaseModel):
 
 
 class Influenza(DiscreteModel):
+    """
+    Discrete-time age-structured influenza model with subclinical (Is),
+    symptomatic (Ic) and complicated (Ig) infections in four age groups,
+    in the spirit of the pandemic influenza transmission models of
+    Longini, I. M., Halloran, M. E., Nizam, A., & Yang, Y. (2004),
+    American Journal of Epidemiology 159(7), 623-633.
+    https://doi.org/10.1093/aje/kwh092
+    """
     def __init__(self):
         super().__init__()
         self.model_type = "Influenza"
@@ -855,6 +863,17 @@ R -->|w| S
 
 
 class SEQIAHR(DiscreteModel):
+    """
+    Discrete SEQIAHR COVID-19 model (Susceptible-Exposed-Infectious-
+    Asymptomatic-Hospitalized-Removed, plus cumulative hospitalizations C
+    and deaths D). Follows the SEQIAHR class of COVID-19 compartmental
+    models; see Nana-Kyere et al. (2022), Comput. Math. Methods Med.
+    2022, 9491847. https://doi.org/10.1155/2022/9491847
+
+    Quarantine is modeled as a time-dependent reduction chi(t) of the
+    force of infection, switched on at day q and off after r days through
+    a smooth tanh transition.
+    """
     def __init__(self):
         super().__init__()
         self.state_variables = OrderedDict(

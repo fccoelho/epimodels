@@ -106,6 +106,7 @@ Contents
    License <license>
    Authors <authors>
    Changelog <changelog>
+   References <references>
 
 
 API Overview

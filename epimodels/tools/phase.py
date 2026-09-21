@@ -10,11 +10,11 @@ Main features:
 - Embedding dimension estimation using Cao's method
 
 References:
-1. Basharat, A., & Shah, M. (2009). Time series prediction by chaotic
-   modeling of nonlinear dynamical systems. IEEE 12th International
-   Conference on Computer Vision.
-2. Cao, L. (1997). Practical method for determining the minimum embedding
+1. Cao, L. (1997). Practical method for determining the minimum embedding
    dimension of a scalar time series. Physica D: Nonlinear Phenomena, 110(1-2), 43-50.
+   https://doi.org/10.1016/S0167-2789(97)00118-8
+2. Fraser, A. M., & Swinney, H. L. (1986). Independent coordinates for
+   strange attractors from mutual information. Physical Review A, 33(2), 1134-1140.
 3. Takens, F. (1981). Detecting strange attractors in turbulence.
    Lecture Notes in Mathematics, 898, 366-381.
 """

@@ -13,6 +13,13 @@ This document describes the new rich parameter validation system implemented in 
 #. **Symbolic Analysis**: Compute R0, find equilibria, and analyze stability using SymPy
 #. **Backward Compatibility**: Existing models continue to work with simple validation
 
+R0 is computed symbolically with the **next-generation matrix** method
+(Diekmann, Heesterbeek & Metz, 1990; van den Driessche & Watmough, 2002;
+see also `Next-generation matrix (Wikipedia)
+<https://en.wikipedia.org/wiki/Next-generation_matrix>`_). Sensitivity and
+elasticity indices of R0 follow the normalized forward sensitivity index
+approach of Chitnis, Hyman & Cushing (2008).
+
 Architecture
 ------------
 
@@ -357,7 +364,7 @@ Integration Tests
            model([100, 10], [0, 50], 110, {'alpha': -0.5})
 
 Available Symbolic Analysis
---------------------------
+---------------------------
 
 The :class:`~epimodels.validation.SymbolicModel` class provides a
 comprehensive symbolic analysis framework. The following features are
@@ -369,6 +376,23 @@ fully implemented:
 * **Sensitivity analysis** via :meth:`~epimodels.validation.SymbolicModel.sensitivity_analysis`
 * **Elasticity analysis** via :meth:`~epimodels.validation.SymbolicModel.elasticity_analysis`
 * **Parameter importance ranking** via :meth:`~epimodels.validation.SymbolicModel.parameter_importance_ranking`
+
+References
+~~~~~~~~~~
+
+* Diekmann, O., Heesterbeek, J. A. P., & Metz, J. A. J. (1990). On the
+  definition and the computation of the basic reproduction ratio R0 in the
+  description of infectious disease in heterogeneous populations.
+  *Journal of Mathematical Biology*, 28(4), 365–382.
+  doi:`10.1007/BF00178324 <https://doi.org/10.1007/BF00178324>`_
+* van den Driessche, P., & Watmough, J. (2002). Reproduction numbers and
+  sub-threshold endemic equilibria for compartmental models of disease
+  transmission. *Mathematical Biosciences*, 180(1–2), 29–48.
+  doi:`10.1016/S0025-5564(02)00108-6 <https://doi.org/10.1016/S0025-5564(02)00108-6>`_
+* Chitnis, N., Hyman, J. M., & Cushing, J. M. (2008). Determining important
+  parameters in the spread of malaria through the sensitivity analysis of a
+  mathematical model. *Bulletin of Mathematical Biology*, 70(5), 1272–1296.
+  doi:`10.1007/s11538-008-9299-0 <https://doi.org/10.1007/s11538-008-9299-0>`_
 
 Examples
 --------
@@ -413,7 +437,7 @@ See inline documentation in:
 * ``epimodels/__init__.py`` - BaseModel integration
 
 Additional Examples
-----------------
+-------------------
 
 For interactive demonstrations, see the Jupyter notebooks in the Examples directory:
 

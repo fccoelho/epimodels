@@ -5,8 +5,10 @@ Models of disease dynamics can be quite diverse, ranging from caricatures
 to very detailed simulations. Traditional models of spread of diseases
 are based on the mean field assumption, i.e., that individuals
 interact randomly at a certain rate. Important references to the
-subject are
-\cite{DiekmannOandHeesterbeekJAP2000,DaleyDJandGaniJandCanningsC2001,IshamVandMedleyG1996,AndersonRMandMayRMandAndersonB1992}.
+subject are Kermack and McKendrick (1927), Anderson and May (1991),
+Diekmann and Heesterbeek (2000), Daley and Gani (1999), Isham and
+Medley (1996) and Keeling and Rohani (2008); see :ref:`references`
+for full citations.
 These models are expressed mathematically as difference equations
 (discrete time) or differential equations (continuous time). In the
 simplest form, these models do not take into consideration either
@@ -27,7 +29,7 @@ If only these transitions are allowed, then individuals in the recovered class n
 One way to visualize these models is using state-flow diagrams, where boxes represent states (compartments) and arrows indicate the transitions. It is the state identity together with the transitions allowed that define the type of model in use.
 
 Discrete models
-==============
+===============
 
 The discrete models implemented in Epimodels, are discrete in time, meaning that they calculate the number of individuals in each compartment, a continuous variable, on time :math:`t+1` as a function the number of individuals in each compartment at time :math:`t`.
 
@@ -35,7 +37,7 @@ In all models presented below, new infections, :math:`L_t` arise from the contac
 
 .. math::  L_{t+1} = \beta S_t \frac{(I_t)^\alpha} {N_t}
 
-where :math:`L_{t+1}` is the number of new cases, :math:`\beta` is the contact rate between Susceptibles and Infectious individuals, :math:`S_t` is the number of susceptibles, :math:`I_t` is the number of infectious individuals, :math:`N_t` is the population size. :math:`\alpha` is a mixing parameter. :math:`\alpha=1` corresponds to homogeneous mixing (Finkenstadt and Grenfell, 2000).
+where :math:`L_{t+1}` is the number of new cases, :math:`\beta` is the contact rate between Susceptibles and Infectious individuals, :math:`S_t` is the number of susceptibles, :math:`I_t` is the number of infectious individuals, :math:`N_t` is the population size. :math:`\alpha` is a mixing parameter. :math:`\alpha=1` corresponds to homogeneous mixing (Finkenstädt & Grenfell, 2000; Bjørnstad et al., 2002).
 
 
 Typology of infectious diseases and corresponding models
@@ -52,8 +54,8 @@ SIR-like models
 ^^^^^^^^^^^^^^^
 
 The natural history of many directly transmitted infectious diseases can be appropriately described by a SIR-like model.
-*SIR* stands for Susceptible :math:`(S)`, Infected :math:`(I)` and Recovered :math:`(R)`. Archetypal *SIRs* are measles
-or chickenpox, i.e., diseases that confer lifelong immunity (but see \cite{KGlassandBTGrenfell2004}).
+*SIR* stands for Susceptible :math:`(S)`, Infected :math:`(I)` and Recovered :math:`(R)`. The model was first proposed by Kermack and McKendrick (1927). Archetypal *SIRs* are measles
+or chickenpox, i.e., diseases that confer lifelong immunity (but see Glass et al., 2004, on the waning of vaccine-induced immunity).
 An individual starts his life in the :math:`S` state and may progress to the :math:`I` state. The rate of progression of
 individuals from :math:`S` to :math:`I` is called the incidence rate or force of infection :math:`(\lambda)` which is a
 function of contact rate, probability of transmission per contact and density of infectious individuals. Individuals
@@ -111,6 +113,7 @@ Next, we describe in more detail each one of these models in their deterministic
 +----------------+---------------------------------------------------+
 
 .. index:: Models;SIR
+
 **SIR models**
     Examples of diseases represented by SIR models are measles, chickenpox. Some diseases that do not confer lifelong immunity may be represented by this model if only short term dynamics is of interest. In the scale of a year, influenza and pertussis, for example, could be described using SIR. The SIR model is implemented as a system of four difference equations. Besides the three equations describing the dynamics of :math:`S`, :math:`I` and :math:`R`, a fourth equation explicitly defines the number of new cases per time step, :math:`L(t)` (i.e., the incidence). In general, this quantity is embedded in the :math:`I` equation (prevalence), but it is important to keep track of the incidence if one wishes to compare prediction with notification data.
 
@@ -185,13 +188,13 @@ SIpR-like models
 These are *SIR* models with immunity intermediary between full (*SIR*) and null (*SIS*).
 Some possibilities arise here: 1) Infection confers full immunity to a fraction of the individuals and the remaining ones return to the susceptible class again, after infection. (*SIpRpS*); 2) Infection provides only partial immunity and recovered individuals are partially susceptible to new infection (*SIpR*); 3) Immunity is full right after infection but wanes with time (*SIRS*). Each model is presented below. Figure :ref:`fig:sipr` illustrates them diagrammatically.
 
-.. _fig:sipr
+.. _fig:sipr:
 .. figure:: SIpRdiagram.png
 
     SIpR-like models.
 
 
-Related models, that included the latent state $E$ are: \textit{SEIpRpS}, *SEIpR*, *SEIRS*.
+Related models, that include the latent state $E$ are: *SEIpRpS*, *SEIpR*, *SEIRS*.
 
 .. index:: Models;SIpRpS
 
@@ -256,3 +259,83 @@ vector (and/or the reservoir(s)). Dengue fever and yellow fever are
 examples. Sexually transmitted diseases may also be modeled with
 SnInRn models if male and female populations are distinguished. These
 models can be define by the user as a custom model.
+
+Specialized Models
+==================
+
+Multi-strain models (dengue)
+----------------------------
+The :class:`~epimodels.continuous.models.Dengue4Strain` model implements
+sequential infection by the four dengue serotypes with temporary
+cross-immunity (compartments :math:`I_i \to R_i \to I_{ij} \to \dots \to R_{ijkl}`),
+following the multi-serotype dengue modelling framework of Bartley,
+Donnelly and Garnett (2002). The two-strain
+:class:`~epimodels.continuous.models.SIR2Strain` model, with temporary
+cross-immunity (:math:`\alpha`), import (:math:`\phi`) and secondary-infection
+transmission ratio (:math:`\rho`), is adapted from Aguiar et al. (2011).
+
+Vector-borne models with climate forcing
+----------------------------------------
+The :class:`~epimodels.continuous.models.SIRSEI` and
+:class:`~epimodels.continuous.models.SEIRS_SEI` models couple a human
+SIR/SEIRS system to a mosquito SEI system, with temperature and rainfall
+forcing mosquito demography and development rates, following
+Parham and Michael (2010). The underlying vector-borne R0 formula derives
+from the Ross–Macdonald theory (Smith et al., 2012).
+
+COVID-19 model with quarantine (SEQIAHR)
+----------------------------------------
+The :class:`~epimodels.continuous.models.SEQIAHR` model (and its
+:class:`~epimodels.discrete.models.SEQIAHR` discrete counterpart) belongs
+to the SEQIAHR class of COVID-19 compartmental models with exposed,
+asymptomatic, hospitalized and cumulative-compartments (Nana-Kyere et al.,
+2022). In this implementation, quarantine is modeled as a time-dependent
+reduction :math:`\chi(t)` of the force of infection, switched on at day
+:math:`q` and off after :math:`r` days through a smooth
+:math:`\tanh` transition.
+
+Heterogeneous susceptibility
+----------------------------
+The :class:`~epimodels.continuous.models.NeipelHeterogeneousSIR` model
+generalizes SIR to power-law distributed susceptibility with a single
+heterogeneity exponent :math:`\alpha` (Neipel et al., 2020).
+
+Age-structured influenza
+------------------------
+The :class:`~epimodels.discrete.models.Influenza` model is a discrete-time,
+age-structured pandemic influenza model with subclinical, symptomatic and
+complicated infections in four age groups, in the spirit of the influenza
+transmission models of Longini et al. (2004).
+
+Ebola model with vaccination
+----------------------------
+The :class:`~epimodels.continuous.models.EbolaSEIHFRV` model extends the
+SEIHFR Ebola model of Legrand et al. (2007), which explicitly models
+transmission in the community, in hospitals and during traditional
+burials, with a ring-vaccination component (rVSV-ZEBOV) informed by
+Henao-Restrepo et al. (2017).
+
+References
+==========
+
+Full bibliographic details for all citations above are collected in the
+:ref:`references` page:
+
+* Kermack & McKendrick (1927) — original SIR model,
+  doi:`10.1098/rspa.1927.0118 <https://doi.org/10.1098/rspa.1927.0118>`_
+* Anderson & May (1991), *Infectious Diseases of Humans* — SIR/SIS/SEIR/SIRS
+  family and heterogeneous structuring
+* Diekmann & Heesterbeek (2000), Daley & Gani (1999), Isham & Medley (1996),
+  Keeling & Rohani (2008) — model building and analysis textbooks
+* Finkenstädt & Grenfell (2000) and Bjørnstad et al. (2002) — discrete-time
+  (TSIR) models and the mixing parameter :math:`\alpha`
+* Glass et al. (2004) — waning vaccine-induced immunity (SIpR-like variants)
+* Bartley, Donnelly & Garnett (2002) — sequential multi-serotype dengue model
+* Aguiar et al. (2011) — two-strain dengue model (SIR2Strain)
+* Parham & Michael (2010); Smith et al. (2012) — climate-forced vector-borne
+  models (SIRSEI, SEIRS_SEI)
+* Nana-Kyere et al. (2022) — SEQIAHR COVID-19 model
+* Neipel et al. (2020) — power-law heterogeneous susceptibility SIR
+* Longini et al. (2004) — age-structured influenza models
+* Legrand et al. (2007); Henao-Restrepo et al. (2017) — Ebola SEIHFR model
+  and ring vaccination
