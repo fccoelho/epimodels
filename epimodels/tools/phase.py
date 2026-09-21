@@ -19,7 +19,8 @@ References:
    Lecture Notes in Mathematics, 898, 366-381.
 """
 
-from typing import Optional
+from __future__ import annotations
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -116,16 +117,16 @@ class TimeDelayEmbedding:
         p_x = hist_x / np.sum(hist_x)
         p_y = hist_y / np.sum(hist_y)
 
-        mi = 0.0
-        for i in range(bins):
-            for j in range(bins):
-                if p_xy[i, j] > 0 and p_x[i] > 0 and p_y[j] > 0:
-                    mi += p_xy[i, j] * np.log(p_xy[i, j] / (p_x[i] * p_y[j]))
+        # Vectorized mutual information over the joint histogram
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratio = p_xy / (p_x[:, None] * p_y[None, :])
+            valid = (p_xy > 0) & (p_x[:, None] > 0) & (p_y[None, :] > 0)
+            terms = np.where(valid, p_xy * np.log(ratio), 0.0)
 
-        return mi
+        return float(terms.sum())
 
     def cao_embedding_dimension(
-        self, dim_max: int = 10, tau: Optional[int] = None, threshold: float = 0.01
+        self, dim_max: int = 10, tau: int | None = None, threshold: float = 0.01
     ) -> tuple[int, list[float]]:
         """
         Estimate minimum embedding dimension using Cao's method.
@@ -182,14 +183,22 @@ class TimeDelayEmbedding:
         if n < 2:
             return 0.0
 
+        last = embedded[:, -1]
         a_i = np.zeros(n)
-        for i in range(n):
-            distances = np.sqrt(np.sum((embedded - embedded[i]) ** 2, axis=1))
-            distances[i] = np.inf
-            nearest = np.argmin(distances)
-            a_i[i] = np.abs(embedded[i, -1] - embedded[nearest, -1])
 
-        return np.mean(a_i)
+        # Vectorized nearest-neighbor search, processed in chunks to bound
+        # memory (squared distances suffice: sqrt is monotonic).
+        chunk = 512
+        for start in range(0, n, chunk):
+            end = min(start + chunk, n)
+            block = embedded[start:end]
+            d2 = ((block[:, None, :] - embedded[None, :, :]) ** 2).sum(axis=-1)
+            rows = np.arange(start, end)
+            d2[np.arange(len(rows)), rows] = np.inf
+            nearest = d2.argmin(axis=1)
+            a_i[rows] = np.abs(last[rows] - last[nearest])
+
+        return float(np.mean(a_i))
 
     def plot_mutual_information(self, tau_max: int = 100, bins: int = 16, ax=None) -> "plt.Axes":
         """
@@ -222,7 +231,7 @@ class TimeDelayEmbedding:
         return ax
 
     def plot_embedding_dimension(
-        self, dim_max: int = 10, tau: Optional[int] = None, ax=None
+        self, dim_max: int = 10, tau: int | None = None, ax=None
     ) -> "plt.Axes":
         """
         Plot E1 statistic vs embedding dimension.

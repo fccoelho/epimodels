@@ -2,12 +2,13 @@
 Tests for phase space analysis tools.
 """
 
-import pytest
 import numpy as np
+import pytest
+
 from epimodels.tools.phase import (
     TimeDelayEmbedding,
-    phase_portrait,
     find_optimal_embedding,
+    phase_portrait,
 )
 
 

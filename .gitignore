@@ -51,7 +51,13 @@ MANIFEST
 # pycharm
 .idea
 
+# vscode
+.vscode/
+
 .opencode
 .aider*
 
 venv/
+
+# graphify index
+graphify-out/

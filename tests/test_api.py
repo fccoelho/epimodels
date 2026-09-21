@@ -2,12 +2,12 @@
 Tests for new API methods: to_dataframe, to_dict, summary, copy, reset, R0.
 """
 
-import copy
 import pytest
-import numpy as np
-from epimodels import ValidationError
-from epimodels.continuous import SIR, SIS, SEIR, SIRS, SIR1D
-from epimodels.discrete import SIR as DiscreteSIR, SIS as DiscreteSIS, SEIR as DiscreteSEIR
+
+from epimodels.continuous import SEIR, SIR, SIR1D, SIRS, SIS
+from epimodels.discrete import SEIR as DiscreteSEIR
+from epimodels.discrete import SIR as DiscreteSIR
+from epimodels.discrete import SIS as DiscreteSIS
 
 
 class TestToDataframe:
@@ -183,31 +183,31 @@ class TestR0Continuous:
         """Should calculate R0 correctly for SIR model."""
         model = SIR()
         model([1000, 1, 0], [0, 50], 1001, {"beta": 0.3, "gamma": 0.1})
-        assert model.R0 == pytest.approx(3.0)
+        assert pytest.approx(3.0) == model.R0
 
     def test_sis_r0(self):
         """Should calculate R0 correctly for SIS model."""
         model = SIS()
         model([1000, 1], [0, 50], 1001, {"beta": 0.5, "gamma": 0.25})
-        assert model.R0 == pytest.approx(2.0)
+        assert pytest.approx(2.0) == model.R0
 
     def test_seir_r0(self):
         """Should calculate R0 correctly for SEIR model."""
         model = SEIR()
         model([1000, 0, 1, 0], [0, 50], 1001, {"beta": 0.4, "gamma": 0.2, "epsilon": 0.1})
-        assert model.R0 == pytest.approx(2.0)
+        assert pytest.approx(2.0) == model.R0
 
     def test_sirs_r0(self):
         """Should calculate R0 correctly for SIRS model."""
         model = SIRS()
         model([1000, 1, 0], [0, 50], 1001, {"beta": 0.6, "gamma": 0.3, "xi": 0.05})
-        assert model.R0 == pytest.approx(2.0)
+        assert pytest.approx(2.0) == model.R0
 
     def test_sir1d_r0(self):
         """Should return R0 parameter for SIR1D model."""
         model = SIR1D()
         model([0], [0, 50], 100, {"R0": 2.5, "gamma": 0.1, "S0": 98})
-        assert model.R0 == pytest.approx(2.5)
+        assert pytest.approx(2.5) == model.R0
 
     def test_none_before_run(self):
         """Should return None before model is run."""
@@ -222,19 +222,19 @@ class TestR0Discrete:
         """Should calculate R0 correctly for discrete SIR model."""
         model = DiscreteSIR()
         model([1000, 1, 0], [0, 50], 1001, {"beta": 0.3, "gamma": 0.1})
-        assert model.R0 == pytest.approx(3.0)
+        assert pytest.approx(3.0) == model.R0
 
     def test_discrete_sis_r0(self):
         """Should calculate R0 correctly for discrete SIS model."""
         model = DiscreteSIS()
-        model([0, 1, 1000], [0, 50], 1001, {"beta": 0.5, "gamma": 0.25})
-        assert model.R0 == pytest.approx(2.0)
+        model([1000, 1], [0, 50], 1001, {"beta": 0.5, "gamma": 0.25})
+        assert pytest.approx(2.0) == model.R0
 
     def test_discrete_seir_r0(self):
         """Should calculate R0 correctly for discrete SEIR model."""
         model = DiscreteSEIR()
         model([1000, 1, 1, 0], [0, 50], 1002, {"beta": 0.4, "r": 0.2, "e": 0.1, "b": 0, "alpha": 1})
-        assert model.R0 == pytest.approx(2.0)
+        assert pytest.approx(2.0) == model.R0
 
     def test_discrete_none_before_run(self):
         """Should return None before model is run."""

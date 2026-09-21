@@ -6,8 +6,8 @@ source = epimodels
 
 [paths]
 source =
-    src/
-    */site-packages/
+    epimodels/
+    */site-packages/epimodels/
 
 [report]
 # Regexes for lines to exclude from consideration

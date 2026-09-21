@@ -6,11 +6,11 @@ tau-leaping, etc.), analogous to epimodels.solvers for ODE models.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
-from typing import Callable
 
 
 @dataclass
@@ -47,17 +47,11 @@ class CTMCTrajectory:
         :return: State array on the grid. Shape (n_points, n_vars).
         """
         t_grid = np.asarray(t_grid, dtype=float)
-        n_points = len(t_grid)
-        n_vars = self.states.shape[1]
-        result = np.zeros((n_points, n_vars))
-
-        j = 0
-        for i, t in enumerate(t_grid):
-            while j < self.steps and self.times[j + 1] <= t:
-                j += 1
-            result[i] = self.states[j]
-
-        return result
+        # For each grid time t, the state index is the number of events that
+        # occurred at or before t (vectorized equivalent of a while loop).
+        event_times = self.times[1 : self.steps + 1]
+        idx = np.searchsorted(event_times, t_grid, side="right")
+        return self.states[idx]
 
     @property
     def duration(self) -> float:
@@ -79,6 +73,10 @@ class CTMCSolverBase(ABC):
 
     All solvers must implement the solve() method that returns
     a CTMCTrajectory object.
+
+    Subclasses implement ``_step()`` with their specific step logic; the
+    trajectory-building scaffolding (time/state bookkeeping, final padding,
+    CTMCTrajectory construction) is shared via ``_run_trajectory()``.
     """
 
     @abstractmethod
@@ -104,6 +102,64 @@ class CTMCSolverBase(ABC):
         :return: CTMCTrajectory with event-driven trajectory
         """
         ...
+
+    def _run_trajectory(
+        self,
+        propensity_fn: Callable[[dict, NDArray], NDArray],
+        transition_matrix: NDArray[np.int64],
+        initial_state: NDArray[np.int64],
+        t_span: tuple[float, float],
+        params: dict,
+        rng: np.random.Generator,
+    ) -> CTMCTrajectory:
+        """Shared trajectory loop: repeatedly apply ``_step`` until it stops."""
+        t0, tf = t_span
+        state = np.array(initial_state, dtype=np.int64)
+        tmat = np.asarray(transition_matrix, dtype=np.int64)
+
+        times_list = [t0]
+        states_list = [state.copy()]
+        event_indices_list = []
+
+        tc = float(t0)
+        while tc < tf:
+            result = self._step(propensity_fn, tmat, state, tc, tf, params, rng)
+            if result is None:
+                break
+            tau, state, event_idx = result
+            tc += tau
+            times_list.append(tc)
+            states_list.append(state.copy())
+            event_indices_list.append(event_idx)
+
+        if len(times_list) == 1:
+            times_list.append(tf)
+            states_list.append(state.copy())
+
+        return CTMCTrajectory(
+            times=np.array(times_list),
+            states=np.array(states_list),
+            event_indices=np.array(event_indices_list, dtype=np.intp),
+            steps=len(event_indices_list),
+        )
+
+    def _step(
+        self,
+        propensity_fn: Callable[[dict, NDArray], NDArray],
+        tmat: NDArray[np.int64],
+        state: NDArray[np.int64],
+        tc: float,
+        tf: float,
+        params: dict,
+        rng: np.random.Generator,
+    ) -> tuple[float, NDArray[np.int64], int] | None:
+        """
+        Perform a single solver step.
+
+        :return: (tau, new_state, event_index) or None to end the trajectory
+        """
+        ...
+
 
 class GillespieSolver(CTMCSolverBase):
     """
@@ -134,53 +190,39 @@ class GillespieSolver(CTMCSolverBase):
         rng: np.random.Generator,
         **kwargs,
     ) -> CTMCTrajectory:
-        t0, tf = t_span
-        state = np.array(initial_state, dtype=np.int64)
-        tmat = np.asarray(transition_matrix, dtype=np.int64)
-        n_events = tmat.shape[1]
-
-        times_list = [t0]
-        states_list = [state.copy()]
-        event_indices_list = []
-
-        capacity = 1024
-        tc = float(t0)
-
-        while tc < tf:
-            a = propensity_fn(params, state)
-            a0 = float(a.sum())
-
-            if a0 <= 0.0:
-                break
-
-            tau = rng.exponential(1.0 / a0)
-            tc += tau
-
-            if tc > tf:
-                break
-
-            cumsum = np.cumsum(a)
-            r = rng.uniform(0.0, a0)
-            event_idx = int(np.searchsorted(cumsum, r))
-            if event_idx >= n_events:
-                event_idx = n_events - 1
-
-            state = state + tmat[:, event_idx]
-
-            times_list.append(tc)
-            states_list.append(state.copy())
-            event_indices_list.append(event_idx)
-
-        if len(times_list) == 1:
-            times_list.append(tf)
-            states_list.append(state.copy())
-
-        return CTMCTrajectory(
-            times=np.array(times_list),
-            states=np.array(states_list),
-            event_indices=np.array(event_indices_list, dtype=np.intp),
-            steps=len(event_indices_list),
+        return self._run_trajectory(
+            propensity_fn, transition_matrix, initial_state, t_span, params, rng
         )
+
+    def _step(
+        self,
+        propensity_fn: Callable[[dict, NDArray], NDArray],
+        tmat: NDArray[np.int64],
+        state: NDArray[np.int64],
+        tc: float,
+        tf: float,
+        params: dict,
+        rng: np.random.Generator,
+    ) -> tuple[float, NDArray[np.int64], int] | None:
+        a = propensity_fn(params, state)
+        a0 = float(a.sum())
+
+        if a0 <= 0.0:
+            return None
+
+        tau = rng.exponential(1.0 / a0)
+
+        if tc + tau > tf:
+            return None
+
+        cumsum = np.cumsum(a)
+        r = rng.uniform(0.0, a0)
+        event_idx = int(np.searchsorted(cumsum, r))
+        if event_idx >= tmat.shape[1]:
+            event_idx = tmat.shape[1] - 1
+
+        return tau, state + tmat[:, event_idx], event_idx
+
 
 class TauLeapingSolver(CTMCSolverBase):
     """
@@ -209,47 +251,32 @@ class TauLeapingSolver(CTMCSolverBase):
         rng: np.random.Generator,
         **kwargs,
     ) -> CTMCTrajectory:
-        t0, tf = t_span
-        state = np.array(initial_state, dtype=np.int64)
-        tmat = np.asarray(transition_matrix, dtype=np.int64)
-        n_events = tmat.shape[1]
-
-        times_list = [t0]
-        states_list = [state.copy()]
-        event_indices_list = []
-
-        tc = float(t0)
-
-        while tc < tf:
-            a = propensity_fn(params, state)
-            a0 = float(a.sum())
-
-            if a0 <= 0.0:
-                break
-
-            tau = min(self.tau, tf - tc)
-            K = rng.poisson(a * tau)
-
-            state = state + tmat @ K
-            state = np.maximum(state, 0)
-
-            tc += tau
-
-            times_list.append(tc)
-            states_list.append(state.copy())
-            
-            event_indices_list.append(-1)
-
-        if len(times_list) == 1:
-            times_list.append(tf)
-            states_list.append(state.copy())
-
-        return CTMCTrajectory(
-            times=np.array(times_list),
-            states=np.array(states_list),
-            event_indices=np.array(event_indices_list, dtype=np.intp),
-            steps=len(event_indices_list),
+        return self._run_trajectory(
+            propensity_fn, transition_matrix, initial_state, t_span, params, rng
         )
+
+    def _step(
+        self,
+        propensity_fn: Callable[[dict, NDArray], NDArray],
+        tmat: NDArray[np.int64],
+        state: NDArray[np.int64],
+        tc: float,
+        tf: float,
+        params: dict,
+        rng: np.random.Generator,
+    ) -> tuple[float, NDArray[np.int64], int] | None:
+        a = propensity_fn(params, state)
+        a0 = float(a.sum())
+
+        if a0 <= 0.0:
+            return None
+
+        tau = min(self.tau, tf - tc)
+        K = rng.poisson(a * tau)
+
+        new_state = np.maximum(state + tmat @ K, 0)
+        return tau, new_state, -1
+
 
 class MidpointTauLeapingSolver(CTMCSolverBase):
     """
@@ -277,53 +304,37 @@ class MidpointTauLeapingSolver(CTMCSolverBase):
         rng: np.random.Generator,
         **kwargs,
     ) -> CTMCTrajectory:
-        t0, tf = t_span
-        state = np.array(initial_state, dtype=np.int64)
-        tmat = np.asarray(transition_matrix, dtype=np.int64)
-        n_events = tmat.shape[1]
-
-        times_list = [t0]
-        states_list = [state.copy()]
-        event_indices_list = []
-
-        tc = float(t0)
-
-        while tc < tf:
-            a = propensity_fn(params, state)
-            a0 = float(a.sum())
-
-            if a0 <= 0.0:
-                break
-
-            tau = min(self.tau, tf - tc)
-
-            state_midpoint = state + 0.5 * tau * (tmat @ a)
-
-            a_mid = propensity_fn(params, state_midpoint)
-            a_mid = np.asarray(a_mid, dtype=float)
-
-            K = rng.poisson(a_mid * tau)
-
-            state = state + tmat @ K
-            state = np.maximum(state, 0)
-
-            tc += tau
-
-            times_list.append(tc)
-            states_list.append(state.copy())
-            
-            event_indices_list.append(-1)
-
-        if len(times_list) == 1:
-            times_list.append(tf)
-            states_list.append(state.copy())
-
-        return CTMCTrajectory(
-            times=np.array(times_list),
-            states=np.array(states_list),
-            event_indices=np.array(event_indices_list, dtype=np.intp),
-            steps=len(event_indices_list),
+        return self._run_trajectory(
+            propensity_fn, transition_matrix, initial_state, t_span, params, rng
         )
+
+    def _step(
+        self,
+        propensity_fn: Callable[[dict, NDArray], NDArray],
+        tmat: NDArray[np.int64],
+        state: NDArray[np.int64],
+        tc: float,
+        tf: float,
+        params: dict,
+        rng: np.random.Generator,
+    ) -> tuple[float, NDArray[np.int64], int] | None:
+        a = propensity_fn(params, state)
+        a0 = float(a.sum())
+
+        if a0 <= 0.0:
+            return None
+
+        tau = min(self.tau, tf - tc)
+
+        state_midpoint = state + 0.5 * tau * (tmat @ a)
+
+        a_mid = np.asarray(propensity_fn(params, state_midpoint), dtype=float)
+
+        K = rng.poisson(a_mid * tau)
+
+        new_state = np.maximum(state + tmat @ K, 0)
+        return tau, new_state, -1
+
 
 class KLeapingSolver(CTMCSolverBase):
     """
@@ -351,57 +362,38 @@ class KLeapingSolver(CTMCSolverBase):
         rng: np.random.Generator,
         **kwargs,
     ) -> CTMCTrajectory:
-        t0, tf = t_span
-        state = np.array(initial_state, dtype=np.int64)
-        tmat = np.asarray(transition_matrix, dtype=np.int64)
-        n_events = tmat.shape[1]
-
-        times_list = [t0]
-        states_list = [state.copy()]
-        event_indices_list = []
-
-        tc = float(t0)
-
-        while tc < tf:
-            a = propensity_fn(params, state)
-            a0 = float(a.sum())
-
-            if a0 <= 0.0:
-                break
-
-            tau = rng.gamma(shape=self.k, scale=1.0 / a0)
-
-            if tc + tau > tf:
-                tau = tf - tc
-                k_eff = max(1, rng.poisson(a0 * tau))
-            else:
-                k_eff = self.k
-
-            p = a / a0
-            K = rng.multinomial(k_eff, p)
-
-            state = state + tmat @ K
-            state = np.maximum(state, 0)
-
-            tc += tau
-
-            times_list.append(tc)
-            states_list.append(state.copy())
-            
-            event_indices_list.append(-1)
-
-        if len(times_list) == 1:
-            times_list.append(tf)
-            states_list.append(state.copy())
-
-        return CTMCTrajectory(
-            times=np.array(times_list),
-            states=np.array(states_list),
-            event_indices=np.array(event_indices_list, dtype=np.intp),
-            steps=len(event_indices_list),
+        return self._run_trajectory(
+            propensity_fn, transition_matrix, initial_state, t_span, params, rng
         )
 
+    def _step(
+        self,
+        propensity_fn: Callable[[dict, NDArray], NDArray],
+        tmat: NDArray[np.int64],
+        state: NDArray[np.int64],
+        tc: float,
+        tf: float,
+        params: dict,
+        rng: np.random.Generator,
+    ) -> tuple[float, NDArray[np.int64], int] | None:
+        a = propensity_fn(params, state)
+        a0 = float(a.sum())
 
+        if a0 <= 0.0:
+            return None
+
+        tau = rng.gamma(shape=self.k, scale=1.0 / a0)
+
+        if tc + tau > tf:
+            tau = tf - tc
+            k_eff = max(1, rng.poisson(a0 * tau))
+        else:
+            k_eff = self.k
+
+        K = rng.multinomial(k_eff, a / a0)
+
+        new_state = np.maximum(state + tmat @ K, 0)
+        return tau, new_state, -1
 __all__ = [
     "CTMCTrajectory",
     "CTMCSolverBase",

@@ -15,7 +15,8 @@ Example:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -147,7 +148,7 @@ class DiffraxSolver(SolverBase):
     def __init__(
         self,
         solver: str = "Tsit5",
-        dt: Optional[float] = None,
+        dt: float | None = None,
         adaptive: bool = True,
         rtol: float = 1e-3,
         atol: float = 1e-6,
@@ -165,7 +166,7 @@ class DiffraxSolver(SolverBase):
     def _get_solver_class(self):
         """Get the diffrax solver class by name."""
         try:
-            from diffrax import Tsit5, Dopri5, Dopri8, Euler, Heun, Midpoint, Ralston
+            from diffrax import Dopri5, Dopri8, Euler, Heun, Midpoint, Ralston, Tsit5
         except ImportError as e:
             raise ImportError(
                 "DiffraxSolver requires diffrax and jax to be installed. "
@@ -191,7 +192,7 @@ class DiffraxSolver(SolverBase):
         **kwargs,
     ) -> SolverResult:
         import jax.numpy as jnp
-        from diffrax import diffeqsolve, ODETerm, SaveAt, PIDController
+        from diffrax import ODETerm, PIDController, SaveAt, diffeqsolve
 
         solver_cls = self._get_solver_class()
         solver = solver_cls(**self.solver_kwargs)
@@ -202,15 +203,22 @@ class DiffraxSolver(SolverBase):
             stepsize_controller = None
 
         def term_fn(t, y, args):
-            # Don't convert t to float - JAX needs it as-is for tracing
-            return jnp.array(fn(t, list(y)))
+            return jnp.asarray(fn(t, y))
 
         term = ODETerm(term_fn)
 
-        y0_jax = jnp.array(y0)
+        y0_jax = jnp.asarray(y0)
 
         t0, t1 = t_span
-        saveat = SaveAt(ts=jnp.linspace(t0, t1, 100))
+        # Honor t_eval for parity with the SciPy path; otherwise save a
+        # uniform grid of n_save points (default 100, as before).
+        t_eval = kwargs.pop("t_eval", None)
+        if t_eval is not None:
+            ts = jnp.asarray(t_eval)
+        else:
+            n_save = kwargs.pop("n_save", 100)
+            ts = jnp.linspace(t0, t1, n_save)
+        saveat = SaveAt(ts=ts)
 
         sol = diffeqsolve(
             term,

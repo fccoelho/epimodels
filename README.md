@@ -28,8 +28,16 @@
 
 ## Features
 
-- **27 model classes** across continuous and discrete families (SIR, SIS, SIRS, SEIR, SEQIAHR, multi-strain, vector-borne, and more)
-- **Model fitting** -- parameter estimation from observed data with 7 loss functions and 4 optimizers
+- **27 model classes** across continuous, discrete and stochastic (CTMC) families (SIR, SIS, SIRS, SEIR, SEQIAHR, multi-strain, vector-borne, and more)
+- **Model registry** -- `get_model("SIR", family="continuous")`, string-based lookup across all families
+- **Model fitting** -- parameter estimation from observed data with 7 loss functions and 4 optimizers, plus a one-call `model.fit(...)` sugar API
+- **Bayesian inference** -- DE-MCMC posterior sampling with normal/Poisson/negative-binomial observation models
+- **Uncertainty ensembles** -- run many simulations with sampled parameters and get quantile bands
+- **Intervention scenarios** -- time-bounded parameter changes (lockdowns, vaccination) with scenario comparison
+- **Rt estimation** -- Cori/EpiEstim-style time-varying reproduction number from incidence data
+- **SDE models** -- stochastic differential equation versions of any continuous model (JAX backend)
+- **Network models** -- event-driven SIR/SIS on networkx graphs, adjacency dicts or matrices
+- **Model serialization** -- save/load model specs (and traces) to JSON/YAML
 - **Symbolic analysis** -- R0 computation, equilibrium finding, stability analysis, sensitivity analysis
 - **Multiple solvers** -- scipy (CPU) and diffrax/JAX (GPU) backends with a unified interface
 - **Phase space tools** -- time delay embedding, mutual information, phase portraits
@@ -41,10 +49,12 @@
 pip install epimodels
 ```
 
-For pandas DataFrame support:
+Optional extras:
 
 ```bash
-pip install epimodels[dataframe]
+pip install epimodels[plot]       # matplotlib plotting
+pip install epimodels[dataframe]  # pandas DataFrame support
+pip install epimodels[jax]        # diffrax/JAX GPU solvers
 ```
 
 ## Getting Started
@@ -223,6 +233,122 @@ The `epimodels.fitting` module provides parameter estimation from observed epide
 ## Related Libraries
 
 For stochastic epidemic models check [EpiStochModels](https://github.com/fccoelho/EpiStochModels).
+
+### Model Registry
+
+Look up models by name across the continuous, discrete and stochastic families:
+
+```python
+from epimodels import get_model, list_models
+
+SIR = get_model("SIR", family="continuous")
+model = SIR()
+print(list_models())
+```
+
+Custom models can be registered with the `@register_model` decorator from `epimodels.registry`.
+
+### Intervention Scenarios
+
+```python
+from epimodels.continuous import SIR
+from epimodels.interventions import Intervention, Scenario, ScenarioComparison
+
+model = SIR()
+base = Scenario("baseline", model, params={"beta": 2.0, "gamma": 0.5},
+                initial_conditions=[999, 1, 0], trange=[0, 100], totpop=1000)
+lockdown = Scenario("lockdown", model, params={"beta": 2.0, "gamma": 0.5},
+                    initial_conditions=[999, 1, 0], trange=[0, 100], totpop=1000,
+                    interventions=[Intervention("beta", start=10, end=40, factor=0.4)])
+
+cmp = ScenarioComparison(base, [lockdown]).run()
+print(cmp.peak("I"))
+cmp.plot("I")
+```
+
+### Uncertainty Ensembles
+
+```python
+from epimodels.continuous import SIR
+from epimodels.ensembles import simulate_ensemble
+
+model = SIR()
+rng = np.random.default_rng(0)
+ensemble = simulate_ensemble(
+    model, n_sims=200,
+    param_sampler=lambda: {"beta": rng.uniform(1.5, 2.5), "gamma": 0.5},
+    initial_conditions=[999, 1, 0], trange=[0, 100], totpop=1000,
+)
+ensemble.quantiles([0.025, 0.5, 0.975])
+ensemble.plot_band("I")
+```
+
+### Bayesian Inference
+
+```python
+# ... or simply, using the sugar API:
+result = model.fit(
+    {"I": observed_I}, times=times,
+    params_to_fit={"beta": (0.1, 5.0), "gamma": (0.01, 1.0)},
+    total_population=10000,
+    method="bayes", likelihood="poisson",
+)
+print(result.summary())
+```
+
+### Rt Estimation
+
+Model-free, real-time reproduction number estimation from incidence data
+(Cori et al. 2013, the EpiEstim method):
+
+```python
+from epimodels.rt import estimate_rt
+
+result = estimate_rt(incidence, window=7, si_mean=4.0, si_sd=2.0)
+print(result.rt_mean)   # posterior mean Rt per window
+result.plot()           # Rt with 95% credible band
+```
+
+### Stochastic Differential Equations
+
+Add demographic (square-root) noise to any continuous model via diffrax/JAX
+(`pip install epimodels[jax]`):
+
+```python
+from epimodels.sde import SDEModel
+
+sde = SDEModel(SIR())
+sde([999, 1, 0], [0, 100], 1000, {"beta": 2.0, "gamma": 0.5},
+    n_sims=50, seed=42)
+sde.get_quantiles(0.95)
+sde.plot_traces("I")
+```
+
+### Network Models
+
+Event-driven SIR/SIS on contact networks (`pip install epimodels[network]`).
+Accepts networkx graphs, adjacency dicts or adjacency matrices:
+
+```python
+import networkx as nx
+from epimodels.network import NetworkSIR
+
+G = nx.barabasi_albert_graph(1000, 3, seed=0)
+model = NetworkSIR(G)
+model(5, [0, 50], {"beta": 0.3, "gamma": 0.1}, n_sims=20, seed=0)
+print(model.final_size().mean())   # mean attack rate
+model.plot_traces("I")
+```
+
+### Saving and Loading Models
+
+```python
+from epimodels.io import save_model, load_model
+
+model.simulate([1000, 1, 0], [0, 50], 1001, {"beta": 2, "gamma": 0.1})
+save_model(model, "sir_run.json", include_traces=True)
+clone = load_model("sir_run.json")   # registry-based reconstruction
+```
 
 ## Documentation
 

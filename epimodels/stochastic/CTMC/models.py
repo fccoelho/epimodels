@@ -18,17 +18,14 @@ Example:
     >>> model.get_quantiles([0.025, 0.975])  # 95% CI
 """
 
-import copy as copy_module
-import warnings
 from abc import abstractmethod
 from collections import OrderedDict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Any
 
 import numpy as np
-from matplotlib import pyplot as plt
 
-from epimodels import BaseModel
+from epimodels import BaseModel, BetaGammaR0Mixin
 from epimodels.exceptions import ValidationError
 from epimodels.stochastic.CTMC.solvers import (
     CTMCSolverBase,
@@ -148,8 +145,9 @@ class CTMCModel(BaseModel):
         initial_state = np.array(inits, dtype=np.int64)
         tmat = self.transitions()
 
-        def propensity_fn(p, state):
-            return self.propensity(p, state)
+        # Bound method (not a closure) so it can be pickled and dispatched
+        # to worker processes by ProcessPoolExecutor.
+        propensity_fn = self.propensity
 
         self._trajectories = self._run_replicates(
             propensity_fn,
@@ -436,6 +434,8 @@ class CTMCModel(BaseModel):
         :param alpha: Transparency for individual replicate lines
         :param ci: Confidence interval width (default 0.95)
         """
+        from matplotlib import pyplot as plt
+
         if not self.traces:
             raise ValueError("No simulation results. Run the model first.")
 
@@ -542,7 +542,7 @@ class CTMCModel(BaseModel):
         except ImportError:
             raise ImportError(
                 "pandas is required for to_dataframe(). "
-                "Install with: pip install pandas"
+                "Install with: pip install epimodels[dataframe]"
             )
 
         if not self.traces:
@@ -562,7 +562,7 @@ class CTMCModel(BaseModel):
         self._n_reps = 0
 
 
-class SIR(CTMCModel):
+class SIR(BetaGammaR0Mixin, CTMCModel):
     """
     Stochastic SIR (Susceptible-Infectious-Removed) CTMC model.
 
@@ -606,18 +606,8 @@ class SIR(CTMCModel):
         I -->|$$\gamma$$| R(Removed)
         """
 
-    @property
-    def R0(self) -> float | None:
-        if (
-            self.param_values
-            and "beta" in self.param_values
-            and "gamma" in self.param_values
-        ):
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
 
-
-class SIS(CTMCModel):
+class SIS(BetaGammaR0Mixin, CTMCModel):
     """
     Stochastic SIS (Susceptible-Infectious-Susceptible) CTMC model.
 
@@ -661,18 +651,8 @@ class SIS(CTMCModel):
         I -->|$$\gamma$$| S
         """
 
-    @property
-    def R0(self) -> float | None:
-        if (
-            self.param_values
-            and "beta" in self.param_values
-            and "gamma" in self.param_values
-        ):
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
 
-
-class SIRS(CTMCModel):
+class SIRS(BetaGammaR0Mixin, CTMCModel):
     """
     Stochastic SIRS (Susceptible-Infectious-Removed-Susceptible) CTMC model.
 
@@ -730,18 +710,8 @@ class SIRS(CTMCModel):
         R -->|$$\xi$$| S
         """
 
-    @property
-    def R0(self) -> float | None:
-        if (
-            self.param_values
-            and "beta" in self.param_values
-            and "gamma" in self.param_values
-        ):
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
 
-
-class SEIR(CTMCModel):
+class SEIR(BetaGammaR0Mixin, CTMCModel):
     """
     Stochastic SEIR (Susceptible-Exposed-Infectious-Removed) CTMC model.
 
@@ -807,16 +777,6 @@ class SEIR(CTMCModel):
         E -->|$$\epsilon$$| I(Infectious)
         I -->|$$\gamma$$| R(Removed)
         """
-
-    @property
-    def R0(self) -> float | None:
-        if (
-            self.param_values
-            and "beta" in self.param_values
-            and "gamma" in self.param_values
-        ):
-            return float(self.param_values["beta"] / self.param_values["gamma"])
-        return None
 
 
 __all__ = [
