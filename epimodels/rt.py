@@ -18,9 +18,14 @@ Example:
     >>> result.plot()       # quick visualization
 
 Reference:
-    Cori, A. et al. (2013). A new framework and software to estimate
-    time-varying reproduction numbers during epidemics. American Journal
-    of Epidemiology, 178(9), 1505-1512.
+    Cori, A., Ferguson, N. M., Fraser, C., & Cauchemez, S. (2013). A new
+    framework and software to estimate time-varying reproduction numbers
+    during epidemics. American Journal of Epidemiology, 178(9), 1505-1512.
+    https://doi.org/10.1093/aje/kwt133
+    Wallinga, J., & Lipsitch, M. (2007). How generation intervals shape the
+    relationship between growth rates and reproductive numbers.
+    Proceedings of the Royal Society B, 274(1609), 599-604.
+    https://doi.org/10.1098/rspb.2006.3754
 """
 
 from __future__ import annotations

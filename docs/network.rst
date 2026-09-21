@@ -4,7 +4,9 @@ Network Models
 The :mod:`epimodels.network` module simulates epidemics directly on contact
 networks with an event-driven (Gillespie) algorithm: infection fires along
 each susceptible–infectious edge at rate ``beta`` and each infected node
-recovers at rate ``gamma``.
+recovers at rate ``gamma``. For an overview of epidemic modelling on
+networks, see Keeling & Eames (2005); for SIR/SIS on scale-free networks
+specifically, Pastor-Satorras & Vespignani (2001).
 
 Graphs can be `networkx <https://networkx.org>`_ graphs (install the
 ``network`` extra: ``pip install epimodels[network]``), plain adjacency
@@ -90,3 +92,21 @@ Note:
     ``traces``, ``summary()``) but take the graph at construction time and
     the number of initially infected nodes in place of ``inits``; there is
     no ``totpop`` argument since the population is the set of nodes.
+
+References
+----------
+
+* Keeling, M. J., & Eames, K. T. D. (2005). Networks and epidemic models.
+  *Journal of the Royal Society Interface*, 2(4), 295–307.
+  doi:`10.1098/rsif.2005.0051 <https://doi.org/10.1098/rsif.2005.0051>`_
+* Pastor-Satorras, R., & Vespignani, A. (2001). Epidemic spreading in
+  scale-free networks. *Physical Review Letters*, 86(14), 3200–3203.
+  doi:`10.1103/PhysRevLett.86.3200 <https://doi.org/10.1103/PhysRevLett.86.3200>`_
+* Barabási, A.-L., & Albert, R. (1999). Emergence of scaling in random
+  networks. *Science*, 286(5439), 509–512.
+  doi:`10.1126/science.286.5439.509 <https://doi.org/10.1126/science.286.5439.509>`_
+
+See also `Complex contagion / epidemic models (Wikipedia)
+<https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology>`_ and
+`Barabási–Albert model (Wikipedia)
+<https://en.wikipedia.org/wiki/Barab%C3%A1si%E2%80%93Albert_model>`_.

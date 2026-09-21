@@ -2,7 +2,9 @@
 Bayesian parameter inference for epidemic models.
 
 Provides :func:`fit_model_bayesian`, a black-box Bayesian sampler based on
-Differential Evolution Markov Chain (DE-MCMC; ter Braak, 2006). Because it
+Differential Evolution Markov Chain (DE-MCMC; ter Braak, 2006,
+Statistics and Computing 16(3), 239-249,
+https://doi.org/10.1007/s11222-006-8769-1). Because it
 only requires likelihood *values* (no gradients), it works with any
 simulation-based model — including models solved with scipy — without
 requiring JAX-traceable code.

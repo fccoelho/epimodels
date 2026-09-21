@@ -9,6 +9,12 @@ Note:
     networkx is optional (``pip install epimodels[network]``); plain
     adjacency dicts and matrices work without it.
 
+References:
+    Keeling, M. J., & Eames, K. T. D. (2005). Networks and epidemic models.
+    J. R. Soc. Interface 2(4), 295-307. https://doi.org/10.1098/rsif.2005.0051
+    Pastor-Satorras, R., & Vespignani, A. (2001). Epidemic spreading in
+    scale-free networks. Phys. Rev. Lett. 86(14), 3200-3203.
+
 Example:
     >>> import networkx as nx
     >>> from epimodels.network import NetworkSIR

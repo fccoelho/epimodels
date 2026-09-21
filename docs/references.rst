@@ -325,6 +325,71 @@ doi:`10.1016/S0167-2789(97)00118-8 <https://doi.org/10.1016/S0167-2789(97)00118-
 *Nonlinear Time Series Analysis* (2nd ed.). Cambridge University Press.
 -- General reference for phase space reconstruction methodology.
 
+Real-Time Rt Estimation
+=======================
+
+**Cori, A., Ferguson, N. M., Fraser, C., & Cauchemez, S. (2013).**
+A new framework and software to estimate time-varying reproduction
+numbers during epidemics. *American Journal of Epidemiology*, 178(9),
+1505–1512. doi:`10.1093/aje/kwt133 <https://doi.org/10.1093/aje/kwt133>`_
+-- The sliding-window, gamma-prior approach (EpiEstim) implemented in
+:func:`epimodels.rt.estimate_rt`.
+
+**Wallinga, J., & Lipsitch, M. (2007).**
+How generation intervals shape the relationship between growth rates and
+reproductive numbers. *Proceedings of the Royal Society B*, 274(1609),
+599–604. doi:`10.1098/rspb.2006.3754 <https://doi.org/10.1098/rspb.2006.3754>`_
+-- Relation between the serial/generation interval distribution, epidemic
+growth and the reproduction number, underlying the Rt interpretation.
+
+Stochastic Differential Equations (Demographic Noise)
+=====================================================
+
+**Gillespie, D. T. (2000).**
+The chemical Langevin equation. *The Journal of Chemical Physics*,
+113(1), 297–306. doi:`10.1063/1.481811 <https://doi.org/10.1063/1.481811>`_
+-- Justifies the Langevin (SDE) approximation of jump processes, including
+the square-root form of the diffusion used by
+:class:`epimodels.sde.SDEModel` as the demographic-noise limit.
+
+**Kloeden, P. E., & Platen, E. (1992).**
+*Numerical Solution of Stochastic Differential Equations.* Springer.
+doi:`10.1007/978-3-662-12616-5 <https://doi.org/10.1007/978-3-662-12616-5>`_
+-- The Euler–Maruyama integration scheme used by
+:class:`epimodels.sde.SDEModel`.
+
+Network Epidemic Models
+=======================
+
+**Keeling, M. J., & Eames, K. T. D. (2005).**
+Networks and epidemic models. *Journal of the Royal Society Interface*,
+2(4), 295–307. doi:`10.1098/rsif.2005.0051 <https://doi.org/10.1098/rsif.2005.0051>`_
+-- Overview of epidemic modelling on contact networks, the framework of
+:mod:`epimodels.network`.
+
+**Pastor-Satorras, R., & Vespignani, A. (2001).**
+Epidemic spreading in scale-free networks. *Physical Review Letters*,
+86(14), 3200–3203. doi:`10.1103/PhysRevLett.86.3200 <https://doi.org/10.1103/PhysRevLett.86.3200>`_
+-- SIR/SIS dynamics on scale-free networks, the class of graphs used in the
+:class:`epimodels.network` examples.
+
+**Barabási, A.-L., & Albert, R. (1999).**
+Emergence of scaling in random networks. *Science*, 286(5439), 509–512.
+doi:`10.1126/science.286.5439.509 <https://doi.org/10.1126/science.286.5439.509>`_
+-- The Barabási–Albert preferential-attachment model used to generate the
+example contact networks.
+
+Bayesian Inference (DE-MCMC)
+============================
+
+**ter Braak, C. J. F. (2006).**
+A Markov chain Monte Carlo version of the genetic algorithm Differential
+Evolution: easy Bayesian computing for real parameter spaces.
+*Statistics and Computing*, 16(3), 239–249.
+doi:`10.1007/s11222-006-8769-1 <https://doi.org/10.1007/s11222-006-8769-1>`_
+-- The Differential Evolution Markov Chain sampler implemented in
+:func:`epimodels.fitting.bayes.fit_model_bayesian`.
+
 R0, Stability and Sensitivity (Symbolic Analysis)
 =================================================
 

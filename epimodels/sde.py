@@ -14,6 +14,12 @@ can be supplied for full control.
 
 Requires the ``jax`` extra: ``pip install epimodels[jax]``.
 
+References:
+    Gillespie, D. T. (2000). The chemical Langevin equation.
+    J. Chem. Phys. 113(1), 297-306. https://doi.org/10.1063/1.481811
+    Kloeden, P. E., & Platen, E. (1992). Numerical Solution of
+    Stochastic Differential Equations. Springer.
+
 Note:
     Models whose ``_model`` uses numpy-specific functions (e.g. ``np.tanh``),
     interpolation callables or internal history state cannot run under JAX

@@ -105,3 +105,22 @@ posterior can be exported for diagnostics and visualization:
 
     idata = result.to_inference_data()
     idata.posterior["beta"]   # (draws, chains)
+
+References
+----------
+
+* ter Braak, C. J. F. (2006). A Markov chain Monte Carlo version of the
+  genetic algorithm Differential Evolution: easy Bayesian computing for
+  real parameter spaces. *Statistics and Computing*, 16(3), 239–249.
+  doi:`10.1007/s11222-006-8769-1 <https://doi.org/10.1007/s11222-006-8769-1>`_
+* King, A. A., Ionides, E. L., Bretó, C. M., Ellner, S. P., & Kendall,
+  B. E. (2015). Avoidable errors in the modelling of outbreaks of emerging
+  pathogens, with special reference to Ebola. *Proceedings of the Royal
+  Society B*, 282(1806), 20150347.
+  doi:`10.1098/rspb.2015.0347 <https://doi.org/10.1098/rspb.2015.0347>`_
+  (choice of observation model — Poisson, negative binomial — for
+  epidemic count data)
+
+See also `Markov chain Monte Carlo (Wikipedia)
+<https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo>`_ and the
+:ref:`references` page.
