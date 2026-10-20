@@ -54,7 +54,8 @@ MANIFEST
 # vscode
 .vscode/
 
-.opencode
+.opencode/*
+!.opencode/skill/
 .aider*
 
 venv/
