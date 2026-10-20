@@ -356,8 +356,10 @@ published matrix onto a coarser age grid without breaking that condition.
     model(inits, [0, 3650], sum(pop), {"beta": beta, "epsilon": 0.125, "gamma": 0.1})
     model.summary()["attack_rate"]
 
-See :doc:`custom_models` for the compartment conventions used by
-hand-written models.
+See :doc:`Examples/Age_Structured_SEIR` for a worked example — the contact
+matrix, the calibration of :math:`R_0`, a routine vaccination programme and what
+happens when it is interrupted — and :doc:`custom_models` for the compartment
+conventions used by hand-written models.
 
 References
 ==========
