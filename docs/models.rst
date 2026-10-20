@@ -315,6 +315,52 @@ transmission in the community, in hospitals and during traditional
 burials, with a ring-vaccination component (rVSV-ZEBOV) informed by
 Henao-Restrepo et al. (2017).
 
+Age-structured MSEIR with contact matrices
+--------------------------------------------
+The :class:`~epimodels.continuous.age_structured.AgeStructuredSEIR` model is
+the age-structured, continuous-time counterpart of
+:class:`~epimodels.continuous.models.SEIR`. Each of the :math:`A` age groups
+carries five compartments — maternally immune (:math:`M`), susceptible
+(:math:`S`), exposed (:math:`E`), infectious (:math:`I`) and removed
+(:math:`R`) — linked by an explicit ageing chain, with optional births,
+mortality and routine vaccination. Transmission enters through a
+who-acquires-infection-from-whom matrix :math:`C`,
+
+.. math:: \lambda_i = \beta \sum_j C_{ij} \frac{I_j}{N_j},
+
+so the mixing structure, rather than a single :math:`\beta`, determines how
+the epidemic distributes itself over ages. The reproduction number is the
+spectral radius of the next-generation matrix
+:math:`\frac{\beta}{\gamma+\mu}\,\frac{N_i}{N_j} C_{ij}`, which is not
+symmetric in general and is therefore computed with
+``numpy.linalg.eigvals`` — using ``eigvalsh`` on it silently returns wrong
+values. :meth:`~epimodels.continuous.age_structured.AgeStructuredSEIR.scale_beta_for_r0`
+inverts the relation, which avoids the usual trial-and-error calibration of
+:math:`\beta`.
+
+Contact matrices come from :mod:`epimodels.tools.contact_matrix`, which
+provides ``polymod_like_contact_matrix`` (a parametric approximation of the
+POLYMOD shape, reciprocal by construction), ``enforce_reciprocity`` /
+``check_reciprocity`` for the detailed-balance condition
+:math:`N_i C_{ij} = N_j C_{ji}`, and ``aggregate_contact_matrix`` to pool a
+published matrix onto a coarser age grid without breaking that condition.
+
+.. code-block:: python
+
+    from epimodels.continuous import AgeStructuredSEIR
+
+    pop = [2.5e6] + [2.6e6] * 4 + [13e6] * 15 + [3e6]
+    model = AgeStructuredSEIR(population=pop)
+    beta = model.scale_beta_for_r0(12.0, gamma=0.1)          # measles-like
+    inits = model.initial_conditions(pop, infectious=[10.0] + [0.0] * 20)
+    model(inits, [0, 3650], sum(pop), {"beta": beta, "epsilon": 0.125, "gamma": 0.1})
+    model.summary()["attack_rate"]
+
+See :doc:`Examples/Age_Structured_SEIR` for a worked example — the contact
+matrix, the calibration of :math:`R_0`, a routine vaccination programme and what
+happens when it is interrupted — and :doc:`custom_models` for the compartment
+conventions used by hand-written models.
+
 References
 ==========
 

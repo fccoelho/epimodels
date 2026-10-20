@@ -45,7 +45,10 @@ FAMILY_PRECEDENCE = ("continuous", "discrete", "stochastic", "network", "custom"
 _BASE_CLASS_NAMES = {"BaseModel", "ContinuousModel", "DiscreteModel", "CTMCModel", "NetworkModel"}
 
 _BUILTIN_MODULES: dict[str, list[str]] = {
-    "continuous": ["epimodels.continuous.models"],
+    "continuous": [
+        "epimodels.continuous.models",
+        "epimodels.continuous.age_structured",
+    ],
     "discrete": ["epimodels.discrete.models"],
     "stochastic": ["epimodels.stochastic.CTMC.models"],
     "network": ["epimodels.network"],

@@ -87,6 +87,7 @@ Contents
    :caption: Examples:
 
    Examples/Continuous_models
+   Examples/Age_Structured_SEIR
    Examples/Stochastic_CTMC_models
    Examples/Discrete_models
    Examples/API_features

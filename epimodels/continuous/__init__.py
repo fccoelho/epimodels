@@ -5,6 +5,7 @@ license: GPL V3 or Later
 """
 
 from .models import *
+from .age_structured import AgeStructuredSEIR
 
 __all__ = [
     "ContinuousModel",
@@ -23,4 +24,5 @@ __all__ = [
     "SIRSNonAutonomous",
     "NeipelHeterogeneousSIR",
     "EbolaSEIHFRV",
+    "AgeStructuredSEIR",
 ]

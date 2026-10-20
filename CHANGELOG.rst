@@ -3,6 +3,33 @@
 Changelog
 =========
 
+Unreleased
+==========
+
+Added
+-----
+
+* **Age-structured MSEIR model** --
+  ``epimodels.continuous.age_structured.AgeStructuredSEIR``: a continuous-time
+  age-structured SEIR with a maternally-immune compartment, an explicit ageing
+  chain, optional births/mortality and optional routine vaccination. Exposes
+  ``R0`` through the next-generation matrix, ``scale_beta_for_r0`` to calibrate
+  transmission to a target reproduction number, ``initial_conditions`` to
+  allocate a population structure across compartments without losing anybody,
+  and ``vaccination_rate_for_coverage`` to translate a coverage target into a
+  rate that competes with ageing. Registered in the model registry as
+  ``"AgeStructuredSEIR"`` (family ``continuous``), so ``get_model``,
+  ``simulate_ensemble``, ``ScenarioComparison``, ``save_model`` and
+  ``to_dataframe`` all work unchanged; the age-aggregated compartments are
+  additionally exposed in ``traces`` under ``"M"``/``"S"``/``"E"``/``"I"``/``"R"``.
+* **Contact-matrix utilities** -- ``epimodels.tools.contact_matrix``:
+  ``polymod_like_contact_matrix`` builds a POLYMOD-shaped matrix that satisfies
+  detailed balance by construction (``N_i C_ij == N_j C_ji``, verified to
+  machine precision) for any population structure; ``enforce_reciprocity`` and
+  ``check_reciprocity`` handle matrices from outside sources;
+  ``aggregate_contact_matrix`` pools a published matrix onto a coarser age grid
+  while preserving reciprocity; ``age_group_labels`` labels the groups.
+
 Version 1.4.0 (2026-09-17)
 ==========================
 
