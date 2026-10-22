@@ -3,8 +3,8 @@
 Changelog
 =========
 
-Unreleased
-==========
+Version 1.5.0 (2026-10-22)
+==========================
 
 Added
 -----
@@ -29,6 +29,20 @@ Added
   ``check_reciprocity`` handle matrices from outside sources;
   ``aggregate_contact_matrix`` pools a published matrix onto a coarser age grid
   while preserving reciprocity; ``age_group_labels`` labels the groups.
+* **Custom Models guide** in the documentation; ``$...$`` math is now rendered
+  via MathJax 3, and figures generated from the documented examples are included
+* **Worked example notebook** for ``AgeStructuredSEIR``
+  (``docs/Examples/Age_Structured_SEIR.ipynb``)
+
+Changed
+-------
+
+* Documentation: verified citations added for the methodologies behind the
+  v1.4.0 features (Rt estimation, SDE layer, network models, Bayesian inference)
+* Dependencies: ``jupyterlab`` and ``mistune`` bumped in the lockfile
+  (dependabot #42, #39)
+* Developer tooling: ``epimodels-dev`` agent skill for model creation,
+  simulation and analysis
 
 Version 1.4.0 (2026-09-17)
 ==========================
